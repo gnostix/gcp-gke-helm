@@ -63,14 +63,14 @@ resource "google_service_account_iam_member" "ci_wif" {
 # projectIamAdmin with IAM Conditions - it can grant itself anything.
 locals {
   ci_roles = [
-    "roles/serviceusage.serviceUsageAdmin",   # step 1: enable APIs
-    "roles/compute.networkAdmin",             # step 2: VPC, subnet, router, NAT
-    "roles/compute.securityAdmin",            # step 2: firewall rules
-    "roles/container.admin",                  # step 3 + 5: GKE and in-cluster RBAC for Helm
-    "roles/iam.serviceAccountAdmin",          # step 3/4: node + workload SAs
-    "roles/iam.serviceAccountUser",           # step 3: attach the node SA to VMs
-    "roles/resourcemanager.projectIamAdmin",  # step 3/4: grant roles to those SAs
-    "roles/secretmanager.admin",              # step 4
+    "roles/serviceusage.serviceUsageAdmin",  # step 1: enable APIs
+    "roles/compute.networkAdmin",            # step 2: VPC, subnet, router, NAT
+    "roles/compute.securityAdmin",           # step 2: firewall rules
+    "roles/container.admin",                 # step 3 + 5: GKE and in-cluster RBAC for Helm
+    "roles/iam.serviceAccountAdmin",         # step 3/4: node + workload SAs
+    "roles/iam.serviceAccountUser",          # step 3: attach the node SA to VMs
+    "roles/resourcemanager.projectIamAdmin", # step 3/4: grant roles to those SAs
+    "roles/secretmanager.admin",             # step 4
   ]
 }
 

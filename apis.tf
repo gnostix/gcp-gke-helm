@@ -2,10 +2,10 @@
 # stack reproducible in any project.
 locals {
   services = [
-    "compute.googleapis.com",          # VPC, subnets, NAT, VMs behind GKE nodes
-    "container.googleapis.com",        # GKE
-    "secretmanager.googleapis.com",    # Secret Manager
-    "iam.googleapis.com",              # service accounts
+    "compute.googleapis.com",              # VPC, subnets, NAT, VMs behind GKE nodes
+    "container.googleapis.com",            # GKE
+    "secretmanager.googleapis.com",        # Secret Manager
+    "iam.googleapis.com",                  # service accounts
     "cloudresourcemanager.googleapis.com", # project-level IAM bindings
   ]
 }
