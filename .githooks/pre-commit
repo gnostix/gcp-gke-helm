@@ -1,0 +1,74 @@
+#!/usr/bin/env bash
+# Pre-commit hook: the same checks CI runs, but in seconds and before you push.
+#   1. terraform fmt      - on the staged .tf files (auto-fixes, then stops the commit)
+#   2. terraform validate - on each stack touched by the commit (root and/or bootstrap)
+#
+# Enable once per clone:   git config core.hooksPath .githooks
+# Skip once (emergency):   git commit --no-verify
+set -euo pipefail
+
+if ! command -v terraform >/dev/null 2>&1; then
+  echo "pre-commit: terraform not found on PATH - skipping checks" >&2
+  exit 0
+fi
+
+repo_root=$(git rev-parse --show-toplevel)
+cd "$repo_root"
+
+staged=$(git diff --cached --name-only --diff-filter=ACMR)
+tf_files=$(echo "$staged" | grep -E '\.tf$' || true)
+[ -z "$staged" ] && exit 0
+
+# ---------------------------------------------------------------- 1. fmt
+if [ -n "$tf_files" ]; then
+  unformatted=$(echo "$tf_files" | xargs terraform fmt -check -list=true 2>/dev/null || true)
+  if [ -n "$unformatted" ]; then
+    echo "$unformatted" | xargs terraform fmt >/dev/null
+    echo "pre-commit: terraform fmt reformatted:" >&2
+    echo "$unformatted" | sed 's/^/  - /' >&2
+    echo "" >&2
+    echo "Review with 'git diff', then:  git add -u && git commit" >&2
+    exit 1
+  fi
+fi
+
+# ----------------------------------------------------------- 2. validate
+# Which stacks does this commit touch? bootstrap/ is its own stack;
+# every other .tf (root files + modules/) belongs to the root stack.
+stacks=""
+if echo "$staged" | grep -qE '^bootstrap/.*(\.tf|\.terraform\.lock\.hcl)$'; then
+  stacks="$stacks bootstrap"
+fi
+if echo "$staged" | grep -vE '^bootstrap/' | grep -qE '(\.tf|\.terraform\.lock\.hcl)$'; then
+  stacks="$stacks ."
+fi
+[ -z "$stacks" ] && exit 0
+
+failed=0
+for dir in $stacks; do
+  label=$([ "$dir" = "." ] && echo "root" || echo "$dir")
+
+  # validate needs providers + modules. -backend=false: no GCP login, no state.
+  # -lockfile=readonly: a commit hook must never rewrite the lock file.
+  # Also init when the stack has local modules but they were never installed.
+  if [ ! -d "$dir/.terraform/providers" ] || [ ! -f "$dir/.terraform/modules/modules.json" -a -d "$dir/modules" ]; then
+    echo "pre-commit: initialising $label (backend disabled)..." >&2
+    if ! (cd "$dir" && terraform init -backend=false -input=false -lockfile=readonly >/dev/null); then
+      echo "pre-commit: terraform init failed in $label" >&2
+      failed=1; continue
+    fi
+  fi
+
+  if out=$(cd "$dir" && terraform validate -no-color 2>&1); then
+    echo "pre-commit: validate $label ✓" >&2
+  else
+    echo "pre-commit: terraform validate failed in $label:" >&2
+    echo "$out" | sed 's/^/    /' >&2
+    # Common cause: a new module since last init.
+    echo "$out" | grep -q "Module not installed" && \
+      echo "    hint: cd $dir && terraform init -backend=false" >&2
+    failed=1
+  fi
+done
+
+exit $failed
