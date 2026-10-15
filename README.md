@@ -46,12 +46,23 @@ terraform init -backend-config=backend.hcl
 terraform plan && terraform apply
 ```
 
-## Step 2 — network
+## Step 2a — CI/CD with GitHub Actions (keyless)
 ```bash
-terraform init          # registers the new local module
-terraform plan          # expect 3 to add: vpc, subnet, firewall (+ router, nat if enable_nat = true)
-terraform apply
+cd bootstrap
+echo 'github_repo = "<owner>/gcp-gke-helm"' >> terraform.tfvars
+terraform apply                      # adds WIF pool/provider + CI service account
+terraform output github_variables    # copy into GitHub repo Variables
+cd ..
+terraform providers lock -platform=darwin_arm64 -platform=linux_amd64   # lock file valid on CI runners
 ```
+GitHub → Settings → Secrets and variables → Actions → **Variables**:
+`GCP_PROJECT_ID`, `TF_STATE_BUCKET`, `GCP_WIF_PROVIDER`, `GCP_CI_SA`.
+GitHub → Settings → Environments → create **gcp-lab** (optionally add yourself as required reviewer).
+Workflow: `.github/workflows/terraform.yml` · Guide: `docs/02b-github-actions.html`
+
+## Step 2 — network (deployed by CI)
+Open a PR with the network code → review the plan comment → merge → the workflow applies it.
+Locally you can still `terraform plan` to experiment, but let CI do the `apply`.
 Guide: `docs/02-network.html`
 
 ## Teardown

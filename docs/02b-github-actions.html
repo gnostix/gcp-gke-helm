@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Step 2a · GitHub Actions</title>
+<style>
+:root{--bg:#fbfaf7;--fg:#1f1e1c;--muted:#6b6862;--card:#fff;--line:#e4e1da;--accent:#2f6fde;--code:#f2f0eb;--a2:#1f9d74;--a3:#c4720f;--soft:#eef3fd}
+@media (prefers-color-scheme:dark){:root{--bg:#18181a;--fg:#e9e7e2;--muted:#9a978f;--card:#222225;--line:#3a3a40;--accent:#7aa7ff;--code:#2a2a2e;--a2:#4cc79c;--a3:#e6a24a;--soft:#232a38}}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.6 system-ui,-apple-system,Segoe UI,sans-serif}
+main{max-width:880px;margin:0 auto;padding:32px 16px 64px}
+h1{font-size:1.9rem;margin:0 0 4px}h2{margin-top:2.2rem;font-size:1.25rem;border-bottom:1px solid var(--line);padding-bottom:6px}
+.sub{color:var(--muted);margin:0 0 24px}
+code{background:var(--code);padding:1px 5px;border-radius:4px;font-size:.9em}
+pre{background:var(--code);padding:14px;border-radius:8px;overflow-x:auto;font-size:.85rem;line-height:1.5}pre code{background:none;padding:0}
+table{width:100%;border-collapse:collapse;font-size:.92rem}td,th{text-align:left;padding:8px;border-bottom:1px solid var(--line);vertical-align:top}th{color:var(--muted);font-weight:600}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 18px;margin:12px 0}
+.steps{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 0}.steps span{font-size:.8rem;padding:3px 10px;border-radius:99px;border:1px solid var(--line);color:var(--muted)}
+.steps .on{border-color:var(--accent);color:var(--accent);font-weight:600}.steps .done{color:var(--a2);border-color:var(--a2)}
+details{margin:8px 0}summary{cursor:pointer;font-weight:600}
+svg{width:100%;height:auto;display:block}svg text{fill:var(--fg);font:13px system-ui,sans-serif}svg .m{fill:var(--muted);font-size:11.5px}
+svg .box{fill:var(--card);stroke:var(--line);stroke-width:1.5}svg .hl{fill:var(--soft);stroke:var(--accent);stroke-width:1.5}
+svg .ar{stroke:var(--muted);stroke-width:1.5;fill:none}
+ol li{margin:6px 0}
+</style></head><body><main>
+<h1>Step 2a · GitHub Actions → GCP</h1>
+<p class="sub">Keyless CI/CD: plan on every PR, apply the reviewed plan on merge, destroy with one click.</p>
+<div class="steps"><span class="done">1 Foundation ✓</span><span class="on">2a CI/CD</span><span>2 Network</span><span>3 GKE</span><span>4 Secrets</span><span>5 Helm app</span></div>
+
+<h2>How the login works (Workload Identity Federation)</h2>
+<svg viewBox="0 0 820 230" role="img" aria-label="GitHub job gets OIDC token, Google STS exchanges it, job impersonates CI service account">
+<defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0L10,5L0,10z" fill="#888"/></marker></defs>
+<rect class="box" x="10" y="70" width="170" height="80" rx="10"/><text x="26" y="98" font-weight="600">GitHub Actions job</text><text class="m" x="26" y="118">permissions:</text><text class="m" x="26" y="134">  id-token: write</text>
+<rect class="box" x="230" y="20" width="170" height="64" rx="10"/><text x="246" y="46" font-weight="600">GitHub OIDC issuer</text><text class="m" x="246" y="66">signs JWT: repo, ref, actor</text>
+<rect class="hl" x="230" y="140" width="170" height="74" rx="10"/><text x="246" y="166" font-weight="600">Google STS + WIF</text><text class="m" x="246" y="186">pool "github"</text><text class="m" x="246" y="202">condition: repo == yours</text>
+<rect class="hl" x="450" y="140" width="170" height="74" rx="10"/><text x="466" y="166" font-weight="600">github-terraform SA</text><text class="m" x="466" y="186">workloadIdentityUser</text><text class="m" x="466" y="202">1-hour token</text>
+<rect class="box" x="670" y="70" width="140" height="80" rx="10"/><text x="686" y="98" font-weight="600">GCP APIs</text><text class="m" x="686" y="118">state bucket</text><text class="m" x="686" y="134">VPC, GKE, …</text>
+<path class="ar" d="M180 95 C205 80 205 60 228 55" marker-end="url(#a)"/><text class="m" x="150" y="54">① request token</text>
+<path class="ar" d="M315 84 V138" marker-end="url(#a)"/><text class="m" x="322" y="116">② present JWT</text>
+<path class="ar" d="M400 177 H448" marker-end="url(#a)"/><text class="m" x="404" y="168">③</text>
+<path class="ar" d="M620 165 C650 160 660 140 690 152" marker-end="url(#a)"/><text class="m" x="630" y="138">④ terraform</text>
+</svg>
+<p>No JSON key exists anywhere. The thing GitHub stores (<code>GCP_WIF_PROVIDER</code>, <code>GCP_CI_SA</code>) is just an address. It's useless unless the request carries a token signed by GitHub <em>for your repo</em>.</p>
+
+<h2>Pipeline</h2>
+<table>
+<tr><th>Trigger</th><th>Jobs</th><th>Result</th></tr>
+<tr><td>Pull request to <code>main</code></td><td>plan</td><td>fmt, validate, plan → posted as PR comment. Nothing changes in GCP.</td></tr>
+<tr><td>Push / merge to <code>main</code></td><td>plan → apply</td><td>The saved plan file is applied after <b>gcp-lab</b> environment approval (if configured).</td></tr>
+<tr><td>Run workflow → <code>destroy</code></td><td>plan -destroy → apply</td><td>Tears everything down: the end-of-day cost saver.</td></tr>
+<tr><td>Run workflow → <code>apply</code></td><td>plan → apply</td><td>Re-create the lab next morning without a commit.</td></tr>
+</table>
+
+<h2>File tour</h2>
+<table>
+<tr><th>File</th><th>What it teaches</th></tr>
+<tr><td><code>bootstrap/github-oidc.tf</code></td><td>Pool → provider (<code>attribute_mapping</code> + <code>attribute_condition</code>) → CI service account → <code>principalSet://…/attribute.repository/owner/repo</code> binding → project roles + state bucket access.</td></tr>
+<tr><td><code>bootstrap/apis.tf</code></td><td><code>sts</code> and <code>iamcredentials</code> are the two APIs that make token exchange and impersonation work.</td></tr>
+<tr><td><code>.github/workflows/terraform.yml</code></td><td><code>permissions</code> narrowed to the minimum, <code>concurrency</code> to queue runs, <code>-detailed-exitcode</code> to skip apply when nothing changed, and a <b>saved plan artifact</b> so apply runs exactly what was reviewed.</td></tr>
+</table>
+
+<h2>Setup — once</h2>
+<ol>
+<li>Create the GitHub repo and push (you've done this).</li>
+<li>Add the repo to bootstrap and apply locally:
+<pre><code>cd bootstrap
+echo 'github_repo = "&lt;owner&gt;/gcp-gke-helm"' &gt;&gt; terraform.tfvars
+terraform plan      # 17 to add: 4 APIs, pool, provider, SA, 10 IAM bindings
+terraform apply
+terraform output github_variables</code></pre></li>
+<li>GitHub → repo → Settings → Secrets and variables → Actions → <b>Variables</b> tab → add the 4 values from the output.</li>
+<li>GitHub → Settings → Environments → <b>New environment</b> <code>gcp-lab</code>. Add yourself under <i>Required reviewers</i> for a manual approval gate. On a <b>private</b> repo this needs a paid GitHub plan; without it, the environment still works, just with no gate.</li>
+<li>Make the provider lock file valid for Linux runners, then commit:
+<pre><code>cd ..
+terraform providers lock -platform=darwin_arm64 -platform=linux_amd64
+git checkout -b step-2-network
+git add -A &amp;&amp; git commit -m "CI: GitHub Actions + network module"
+git push -u origin step-2-network     # open a PR → watch the plan comment</code></pre></li>
+<li>Merge the PR → the workflow applies the network (3 resources).</li>
+</ol>
+
+<h2>Verify</h2>
+<pre><code>gcloud iam workload-identity-pools providers describe github-oidc \
+  --location=global --workload-identity-pool=github --format="value(attributeCondition)"
+gcloud projects get-iam-policy $PROJECT --flatten=bindings[].members \
+  --filter="bindings.members:github-terraform" --format="value(bindings.role)"</code></pre>
+
+<h2>Check your understanding</h2>
+<details class="card"><summary>Why does WIF live in bootstrap and not the root stack?</summary><p>Chicken-and-egg: CI can't create the identity it needs to log in. Anything CI depends on to <em>run at all</em> (state bucket, its own identity) is created once by a human.</p></details>
+<details class="card"><summary>Why is <code>attribute_condition</code> essential?</summary><p>Every repo on GitHub can get a token from <code>token.actions.githubusercontent.com</code>. Without the condition, any GitHub user could exchange their token at your pool. The IAM binding filters again, but the condition rejects them at the door.</p></details>
+<details class="card"><summary>Why apply a saved plan instead of running <code>terraform apply</code> again?</summary><p>Between plan and apply, someone may change things. Applying the saved file guarantees you get what was reviewed, and Terraform refuses if the state moved ("Saved plan is stale").</p></details>
+<details class="card"><summary>What would harden this for the Pfizer project?</summary><p>Separate read-only <em>plan</em> SA (PRs) and <em>apply</em> SA (only <code>attribute.ref == refs/heads/main</code>), match on <code>repository_id</code> instead of name (repo-rename squatting), IAM Conditions on <code>projectIamAdmin</code>, and pinning actions to commit SHAs.</p></details>
+
+<h2>Next</h2>
+<p><b>Step 3 — GKE:</b> a zonal Standard cluster with a single Spot node, delivered through this same PR → plan → merge → apply loop.</p>
+</main></body></html>

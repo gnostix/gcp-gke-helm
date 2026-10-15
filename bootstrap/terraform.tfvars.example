@@ -1,2 +1,3 @@
 project_id = "my-gke-lab-project"
 region     = "europe-west1"
+github_repo = "your-github-user/gcp-gke-helm"

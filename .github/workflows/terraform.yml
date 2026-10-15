@@ -1,0 +1,150 @@
+# Terraform CI/CD for the root stack (bootstrap/ stays a manual, local-state stack).
+#
+#   pull_request  -> fmt + validate + plan, plan posted as a PR comment
+#   push to main  -> plan, then apply that exact saved plan
+#   manual run    -> choose plan | apply | destroy   (destroy = end-of-day cost saver)
+name: terraform
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "**.tf"
+      - ".terraform.lock.hcl"
+      - ".github/workflows/terraform.yml"
+      - "!bootstrap/**"
+  push:
+    branches: [main]
+    paths:
+      - "**.tf"
+      - ".terraform.lock.hcl"
+      - ".github/workflows/terraform.yml"
+      - "!bootstrap/**"
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "What to run"
+        type: choice
+        options: [plan, apply, destroy]
+        default: plan
+
+# Default token permissions are broad - narrow them.
+permissions:
+  contents: read
+  id-token: write       # lets the job request GitHub's OIDC token (for WIF)
+  pull-requests: write  # post the plan as a PR comment
+
+# Never run two Terraform jobs against the same state at once
+# (the GCS lock would catch it, but queueing is nicer than failing).
+concurrency:
+  group: terraform-gke-lab
+  cancel-in-progress: false
+
+env:
+  TF_VERSION: "1.13.3"         # keep in line with `terraform version` on your laptop
+  TF_IN_AUTOMATION: "true"     # shorter, CI-friendly output
+  TF_INPUT: "false"            # never wait for interactive input
+  TF_VAR_project_id: ${{ vars.GCP_PROJECT_ID }}   # replaces the git-ignored terraform.tfvars
+  # Other variables use their defaults (region, zone, name, enable_nat=false).
+
+jobs:
+  plan:
+    runs-on: ubuntu-24.04
+    outputs:
+      exitcode: ${{ steps.plan.outputs.exitcode }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Authenticate to Google Cloud (keyless)
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_CI_SA }}
+
+      - uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          terraform_wrapper: false   # we handle exit codes ourselves
+
+      - name: terraform fmt
+        run: terraform fmt -check -recursive
+
+      - name: terraform init
+        run: terraform init -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}"
+
+      - name: terraform validate
+        run: terraform validate -no-color
+
+      - name: terraform plan
+        id: plan
+        run: |
+          DESTROY=""
+          if [ "${{ inputs.action }}" = "destroy" ]; then DESTROY="-destroy"; fi
+
+          # -detailed-exitcode: 0 = no changes, 1 = error, 2 = changes present
+          set +e
+          terraform plan $DESTROY -detailed-exitcode -no-color -out=tfplan | tee plan.txt
+          ec=${PIPESTATUS[0]}
+          set -e
+          echo "exitcode=$ec" >> "$GITHUB_OUTPUT"
+          [ "$ec" -eq 1 ] && exit 1
+
+          {
+            echo "### Terraform plan (exit code $ec)"
+            echo '<details><summary>Show plan</summary>'
+            echo; echo '```'
+            tail -c 60000 plan.txt
+            echo '```'; echo '</details>'
+          } > summary.md
+          cat summary.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Comment plan on PR
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh pr comment ${{ github.event.pull_request.number }} --body-file summary.md
+
+      # Hand the exact reviewed plan to the apply job. A plan file can contain
+      # sensitive values, so keep it only briefly.
+      - name: Upload plan
+        if: github.event_name != 'pull_request' && steps.plan.outputs.exitcode == '2'
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan
+          path: tfplan
+          retention-days: 1
+
+  apply:
+    needs: plan
+    if: >-
+      github.event_name != 'pull_request' &&
+      needs.plan.outputs.exitcode == '2' &&
+      (github.event_name == 'push' || inputs.action != 'plan')
+    runs-on: ubuntu-24.04
+    # Settings -> Environments -> gcp-lab: add "Required reviewers" to get a
+    # manual approval button before anything changes in GCP.
+    environment: gcp-lab
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_CI_SA }}
+
+      - uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          terraform_wrapper: false
+
+      - name: terraform init
+        run: terraform init -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}"
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: tfplan
+
+      # Applying a saved plan does exactly what was reviewed - and refuses to
+      # run if the state changed since ("Saved plan is stale").
+      - name: terraform apply
+        run: terraform apply -no-color tfplan
