@@ -13,6 +13,11 @@ modules/
 docs/               per-step explainers (open in a browser)
 ```
 
+## Git hook (run once per clone)
+```bash
+git config core.hooksPath .githooks   # pre-commit: `terraform fmt` + `terraform validate` on touched stacks
+```
+
 ## Prerequisites
 terraform >= 1.9, gcloud, kubectl, helm, gke-gcloud-auth-plugin
 
