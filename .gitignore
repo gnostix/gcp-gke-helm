@@ -1,0 +1,30 @@
+# Terraform working dirs & state (state lives in GCS, never in git)
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+*.tfplan
+
+# Real values stay local; commit only the *.example files
+*.tfvars
+!*.tfvars.example
+backend.hcl
+!backend.hcl.example
+
+.DS_Store
+
+# Local overrides & lock info
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraform.tfstate.lock.info
+
+# Credentials that must never land in git (SA keys, kubeconfigs, env files)
+*.json
+!**/*.example.json
+*.pem
+*.key
+kubeconfig*
+.env
+.env.*

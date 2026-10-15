@@ -1,0 +1,8 @@
+# cp terraform.tfvars.example terraform.tfvars  (terraform.tfvars is git-ignored)
+project_id = "my-gke-lab-project"
+region     = "europe-west1"
+zone       = "europe-west1-b"
+name       = "gke-lab"
+
+# Cost switch: false = no Cloud NAT, nodes get public IPs (cheapest)
+enable_nat = false

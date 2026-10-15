@@ -1,0 +1,2 @@
+project_id = "my-gke-lab-project"
+region     = "europe-west1"

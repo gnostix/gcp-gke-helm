@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Step 2 · Network</title>
+<style>
+:root{--bg:#fbfaf7;--fg:#1f1e1c;--muted:#6b6862;--card:#fff;--line:#e4e1da;--accent:#2f6fde;--code:#f2f0eb;--a2:#1f9d74;--a3:#c4720f;--soft:#eef3fd}
+@media (prefers-color-scheme:dark){:root{--bg:#18181a;--fg:#e9e7e2;--muted:#9a978f;--card:#222225;--line:#3a3a40;--accent:#7aa7ff;--code:#2a2a2e;--a2:#4cc79c;--a3:#e6a24a;--soft:#232a38}}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.6 system-ui,-apple-system,Segoe UI,sans-serif}
+main{max-width:880px;margin:0 auto;padding:32px 16px 64px}
+h1{font-size:1.9rem;margin:0 0 4px}h2{margin-top:2.2rem;font-size:1.25rem;border-bottom:1px solid var(--line);padding-bottom:6px}
+.sub{color:var(--muted);margin:0 0 24px}
+code{background:var(--code);padding:1px 5px;border-radius:4px;font-size:.9em}
+pre{background:var(--code);padding:14px;border-radius:8px;overflow-x:auto;font-size:.85rem;line-height:1.5}pre code{background:none;padding:0}
+table{width:100%;border-collapse:collapse;font-size:.92rem}td,th{text-align:left;padding:8px;border-bottom:1px solid var(--line);vertical-align:top}th{color:var(--muted);font-weight:600}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 18px;margin:12px 0}
+.steps{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 0}.steps span{font-size:.8rem;padding:3px 10px;border-radius:99px;border:1px solid var(--line);color:var(--muted)}
+.steps .on{border-color:var(--accent);color:var(--accent);font-weight:600}.steps .done{color:var(--a2);border-color:var(--a2)}
+details{margin:8px 0}summary{cursor:pointer;font-weight:600}
+svg{width:100%;height:auto;display:block}
+svg text{fill:var(--fg);font:13px system-ui,sans-serif}svg .m{fill:var(--muted);font-size:11.5px}
+svg .box{fill:var(--card);stroke:var(--line);stroke-width:1.5}svg .vpc{fill:var(--soft);stroke:var(--accent);stroke-width:1.5;stroke-dasharray:6 4}
+svg .ln{stroke:var(--muted);stroke-width:1.5;fill:none}svg .eg{stroke:var(--a2);stroke-width:2;fill:none}svg .in{stroke:var(--a3);stroke-width:2;fill:none;stroke-dasharray:5 4}
+</style></head><body><main>
+<h1>Step 2 · Network</h1>
+<p class="sub">A custom VPC sized for VPC-native GKE, private egress through Cloud NAT, and almost no firewall rules.</p>
+<div class="steps"><span class="done">1 Foundation ✓</span><span class="on">2 Network</span><span>3 GKE</span><span>4 Secrets</span><span>5 Helm app</span></div>
+
+<h2>What we're building</h2>
+<p style="color:var(--muted);font-size:.9rem">Diagram shows <code>enable_nat = true</code>. With the cheap default, Router and NAT are absent and the node reaches the internet through its own ephemeral IP.</p>
+<svg viewBox="0 0 820 360" role="img" aria-label="VPC with one subnet holding three IP ranges; egress via Cloud Router and NAT; IAP SSH ingress">
+<defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0L10,5L0,10z" fill="currentColor"/></marker></defs>
+<rect class="vpc" x="20" y="20" width="560" height="320" rx="14"/>
+<text x="40" y="48" font-weight="600">gke-lab-vpc</text><text class="m" x="40" y="66">custom mode · regional routing</text>
+<rect class="box" x="40" y="86" width="350" height="234" rx="10"/>
+<text x="58" y="112" font-weight="600">subnet gke-lab-&lt;region&gt;</text><text class="m" x="58" y="130">Private Google Access = on</text>
+<rect class="box" x="58" y="146" width="314" height="44" rx="6"/><text x="72" y="166">primary · 10.10.0.0/20</text><text class="m" x="72" y="182">node VMs (Step 3)</text>
+<rect class="box" x="58" y="200" width="314" height="44" rx="6"/><text x="72" y="220">secondary "pods" · 10.20.0.0/16</text><text class="m" x="72" y="236">one /24 per node</text>
+<rect class="box" x="58" y="254" width="314" height="44" rx="6"/><text x="72" y="274">secondary "services" · 10.30.0.0/20</text><text class="m" x="72" y="290">ClusterIP Services</text>
+<rect class="box" x="420" y="146" width="140" height="44" rx="6"/><text x="434" y="166">Cloud Router</text><text class="m" x="434" y="182">regional</text>
+<rect class="box" x="420" y="220" width="140" height="44" rx="6"/><text x="434" y="240">Cloud NAT</text><text class="m" x="434" y="256">AUTO_ONLY IPs</text>
+<path class="ln" d="M490 190 V220"/>
+<rect class="box" x="640" y="220" width="160" height="44" rx="6"/><text x="654" y="240">Internet</text><text class="m" x="654" y="256">Docker Hub, GitHub…</text>
+<path class="eg" style="color:var(--a2)" d="M372 242 H420" marker-end="url(#ar)"/><path class="eg" style="color:var(--a2)" d="M560 242 H640" marker-end="url(#ar)"/>
+<rect class="box" x="640" y="70" width="160" height="44" rx="6"/><text x="654" y="90">IAP</text><text class="m" x="654" y="106">35.235.240.0/20</text>
+<path class="in" style="color:var(--a3)" d="M640 92 H300 V146" marker-end="url(#ar)"/><text class="m" x="430" y="84">tcp:22 → tag gke-lab-node</text>
+</svg>
+<p class="m" style="color:var(--muted);font-size:.9rem"><span style="color:var(--a2)">━</span> egress via NAT &nbsp; <span style="color:var(--a3)">┅</span> only allowed ingress (SSH through IAP)</p>
+
+<h2>File tour — <code>modules/network/</code></h2>
+<table>
+<tr><th>File</th><th>What it teaches</th></tr>
+<tr><td><code>versions.tf</code></td><td>Child modules say <em>which</em> provider they need and a minimum version. They don't configure it: the root owns the <code>provider</code> block and the exact version in <code>.terraform.lock.hcl</code>.</td></tr>
+<tr><td><code>variables.tf</code></td><td>The IP plan. Defaults live in the module, and the root can override them per environment.</td></tr>
+<tr><td><code>main.tf</code></td><td>5 resources. References like <code>google_compute_network.this.id</code> create <b>implicit dependencies</b>, so Terraform builds VPC → subnet → router → NAT in order without being told.</td></tr>
+<tr><td><code>outputs.tf</code></td><td>The module's public API. GKE will consume the subnet and the <em>names</em> of its secondary ranges.</td></tr>
+<tr><td>root <code>main.tf</code></td><td><code>module "network" { source = "./modules/network" }</code> plus <code>depends_on</code> on the APIs: an <b>explicit dependency</b>, because no attribute links them.</td></tr>
+</table>
+
+<h2>Key design choices</h2>
+<div class="card"><b>VPC-native (alias IP) cluster.</b> Pods get real VPC IPs from the secondary range, so they're routable inside the VPC and to peered networks/on-prem. That matters for the Pfizer case, where pods may talk to Slurm-side storage (Filestore, NFS) directly.</div>
+<div class="card"><b>Private nodes + Cloud NAT.</b> Nodes get no public IP. NAT gives them outbound-only internet. Google APIs go through <b>Private Google Access</b> instead, which is cheaper and doesn't count against NAT ports.</div>
+<div class="card"><b>Minimal firewall.</b> Implied rules already deny all ingress and allow all egress. GKE creates its own <code>gke-…</code> rules for control-plane→node and pod-to-pod traffic. We add only IAP SSH, scoped by network tag.</div>
+<div class="card"><b>Cost &amp; the <code>enable_nat</code> switch.</b> VPC, subnet, router and firewall are free. Network resources are regional only, so there's no cheaper zonal variant. Cloud NAT costs $0.0014/VM-hour + $0.005/IP-hour + $0.045/GiB processed. The lab defaults to <code>enable_nat = false</code>: Router and NAT aren't created, and in Step 3 the node gets an ephemeral public IP instead (outbound works, inbound is still denied by the implied firewall rule). Set it to <code>true</code> to practise the production pattern of private nodes + NAT shown in the diagram.</div>
+<div class="card"><b>Optional resources with <code>count</code>.</b> <code>count = var.enable_nat ? 1 : 0</code> makes a resource a list of 0 or 1. You then refer to it as <code>google_compute_router.this[0]</code>. That's why the NAT's <code>router</code> argument uses <code>[0]</code>.</div>
+
+<h2>Run it</h2>
+<pre><code>terraform init      # picks up the new local module
+terraform fmt -recursive -check &amp;&amp; terraform validate
+terraform plan      # Plan: 3 to add (5 with enable_nat = true)
+terraform apply
+terraform output network</code></pre>
+
+<h2>Verify</h2>
+<pre><code>gcloud compute networks list --filter="name~gke-lab"
+gcloud compute networks subnets describe gke-lab-europe-west1 --region europe-west1 \
+  --format="yaml(ipCidrRange,secondaryIpRanges,privateIpGoogleAccess)"
+gcloud compute routers nats list --router gke-lab-router --region europe-west1   # only if enable_nat = true
+gcloud compute firewall-rules list --filter="network~gke-lab-vpc"</code></pre>
+
+<h2>Check your understanding</h2>
+<details class="card"><summary>Why does the pods range need to be so much bigger than the nodes range?</summary><p>By default each node reserves a /24 (256 IPs) for up to 110 pods, even with only 3 pods running. A /16 pods range therefore caps the cluster at ~256 nodes. Running out of pod range is a classic GKE scaling wall, and you fix it with "additional pod ranges" or a smaller <code>max_pods_per_node</code>.</p></details>
+<details class="card"><summary>What breaks if you remove Cloud NAT?</summary><p>Pulling images from public registries (Docker Hub, ghcr.io, quay.io) fails with <code>ImagePullBackOff</code>. Images from Artifact Registry still work, thanks to Private Google Access.</p></details>
+<details class="card"><summary>Why are <code>source_ip_ranges_to_nat = ["ALL_IP_RANGES"]</code> important?</summary><p>With only <code>PRIMARY_IP_RANGE</code>, node VMs could reach the internet but pods (which use the secondary range) could not.</p></details>
+<details class="card"><summary>What would you change for production?</summary><p>A Shared VPC host project owned by the network team, flow logs on, NAT with static (reserved) IPs if partners allowlist you, and the IP plan coordinated with on-prem to avoid overlap.</p></details>
+
+<h2>Next</h2>
+<p><b>Step 3 — GKE:</b> a private Standard cluster on this subnet, a dedicated node service account, Workload Identity, and a small node pool tagged <code>gke-lab-node</code>.</p>
+</main></body></html>

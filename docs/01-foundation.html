@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Step 1 · Foundation</title>
+<style>
+:root{--bg:#fbfaf7;--fg:#1f1e1c;--muted:#6b6862;--card:#fff;--line:#e4e1da;--accent:#2f6fde;--code:#f2f0eb}
+@media (prefers-color-scheme:dark){:root{--bg:#18181a;--fg:#e9e7e2;--muted:#9a978f;--card:#222225;--line:#333338;--accent:#7aa7ff;--code:#2a2a2e}}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.6 system-ui,-apple-system,Segoe UI,sans-serif}
+main{max-width:860px;margin:0 auto;padding:32px 16px 64px}
+h1{font-size:1.9rem;margin:0 0 4px}h2{margin-top:2.2rem;font-size:1.25rem;border-bottom:1px solid var(--line);padding-bottom:6px}
+.sub{color:var(--muted);margin:0 0 24px}
+code{background:var(--code);padding:1px 5px;border-radius:4px;font-size:.9em}
+pre{background:var(--code);padding:14px;border-radius:8px;overflow-x:auto;font-size:.85rem;line-height:1.5}
+pre code{background:none;padding:0}
+table{width:100%;border-collapse:collapse;font-size:.92rem}td,th{text-align:left;padding:8px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--muted);font-weight:600}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 18px;margin:12px 0}
+.steps{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 0}.steps span{font-size:.8rem;padding:3px 10px;border-radius:99px;border:1px solid var(--line);color:var(--muted)}
+.steps .on{border-color:var(--accent);color:var(--accent);font-weight:600}
+details{margin:8px 0}summary{cursor:pointer;font-weight:600}
+</style></head><body><main>
+<h1>Step 1 · Foundation</h1>
+<p class="sub">Remote state, providers, and APIs — everything later steps stand on.</p>
+<div class="steps"><span class="on">1 Foundation</span><span>2 Network</span><span>3 GKE</span><span>4 Secrets</span><span>5 Helm app</span></div>
+
+<h2>Why two stacks?</h2>
+<p>Terraform state must live somewhere shared and durable (a GCS bucket), but Terraform can't store the state of the bucket <em>inside</em> the bucket it's creating. So <code>bootstrap/</code> creates the bucket with <b>local</b> state, once. The root stack then uses that bucket as its <code>gcs</code> backend.</p>
+
+<h2>File tour</h2>
+<table>
+<tr><th>File</th><th>What it teaches</th></tr>
+<tr><td><code>bootstrap/main.tf</code></td><td>State bucket hardening: uniform access, public-access prevention, versioning (undo a bad state write), lifecycle to cap old versions, <code>force_destroy=false</code>.</td></tr>
+<tr><td><code>versions.tf</code></td><td>Pin Terraform and provider versions. <code>~&gt; 7.0</code> = any 7.x, never 8.0 — breaking changes are opt-in.</td></tr>
+<tr><td><code>backend.tf</code> + <code>backend.hcl</code></td><td><b>Partial backend config.</b> Backend blocks can't use variables, so the bucket is passed at <code>init</code> time. Same code, different environments.</td></tr>
+<tr><td><code>providers.tf</code></td><td><code>default_labels</code> stamps every resource — cheap cost tracking and cleanup filters.</td></tr>
+<tr><td><code>variables.tf</code></td><td>Typed inputs with a <code>validation</code> block — fail at plan time, not halfway through apply.</td></tr>
+<tr><td><code>apis.tf</code></td><td><code>for_each</code> over a set: one resource per API, addressed as <code>google_project_service.this["container.googleapis.com"]</code>. <code>disable_on_destroy=false</code> avoids breaking other users of the project.</td></tr>
+</table>
+
+<h2>Run it</h2>
+<pre><code># auth (once)
+gcloud auth login
+gcloud auth application-default login
+gcloud config set project &lt;PROJECT_ID&gt;
+
+# 1) bootstrap the state bucket
+cd bootstrap
+cp terraform.tfvars.example terraform.tfvars   # edit project_id
+terraform init
+terraform fmt -check &amp;&amp; terraform validate
+terraform apply
+cd ..
+
+# 2) root stack on remote state
+cp backend.hcl.example backend.hcl             # bucket = &lt;state_bucket output&gt;
+cp terraform.tfvars.example terraform.tfvars   # edit project_id
+terraform init -backend-config=backend.hcl
+terraform plan
+terraform apply</code></pre>
+
+<h2>Verify</h2>
+<pre><code>gsutil ls gs://&lt;PROJECT_ID&gt;-tfstate/gke-lab/      # default.tfstate is there
+gcloud services list --enabled | grep -E 'container|secretmanager|compute'
+terraform state list                             # 5 google_project_service entries</code></pre>
+
+<h2>Check your understanding</h2>
+<details class="card"><summary>What happens if two people run <code>apply</code> at the same time?</summary><p>The GCS backend takes a lock (a <code>.tflock</code> object). The second run waits or fails with a lock error instead of corrupting state.</p></details>
+<details class="card"><summary>Why <code>for_each</code> and not <code>count</code> for the APIs?</summary><p>With <code>count</code>, resources are indexed 0..n. Remove an item from the middle and every later index shifts, so Terraform plans to destroy/recreate them. <code>for_each</code> keys by name, so removing one only touches that one.</p></details>
+<details class="card"><summary>Where would a GCP outage of Secret Manager show up?</summary><p>Not here — enabling an API is just a project setting. It matters in Step 4/5 when pods read secrets at startup.</p></details>
+
+<h2>Next</h2>
+<p><b>Step 2 — Network:</b> custom VPC, a subnet with secondary ranges for pods and services (VPC-native GKE), Cloud Router + NAT so private nodes can pull images, and minimal firewall rules.</p>
+</main></body></html>
