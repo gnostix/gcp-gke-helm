@@ -44,3 +44,12 @@ output "port_forward" {
   description = "Then open http://localhost:8080"
   value       = module.app.port_forward
 }
+
+output "podinfo" {
+  value = module.podinfo.release
+}
+
+output "port_forward_podinfo" {
+  description = "Then open http://localhost:9898"
+  value       = module.podinfo.port_forward
+}
