@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Step 5b · Podinfo</title>
+<style>
+:root{--bg:#fbfaf7;--fg:#1f1e1c;--muted:#6b6862;--card:#fff;--line:#e4e1da;--accent:#2f6fde;--code:#f2f0eb;--a2:#1f9d74;--a3:#c4720f;--soft:#eef3fd}
+@media (prefers-color-scheme:dark){:root{--bg:#18181a;--fg:#e9e7e2;--muted:#9a978f;--card:#222225;--line:#3a3a40;--accent:#7aa7ff;--code:#2a2a2e;--a2:#4cc79c;--a3:#e6a24a;--soft:#232a38}}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.6 system-ui,-apple-system,Segoe UI,sans-serif}
+main{max-width:880px;margin:0 auto;padding:32px 16px 64px}
+h1{font-size:1.9rem;margin:0 0 4px}h2{margin-top:2.2rem;font-size:1.25rem;border-bottom:1px solid var(--line);padding-bottom:6px}
+.sub{color:var(--muted);margin:0 0 24px}
+code{background:var(--code);padding:1px 5px;border-radius:4px;font-size:.9em}
+pre{background:var(--code);padding:14px;border-radius:8px;overflow-x:auto;font-size:.85rem;line-height:1.5}pre code{background:none;padding:0}
+table{width:100%;border-collapse:collapse;font-size:.92rem}td,th{text-align:left;padding:8px;border-bottom:1px solid var(--line);vertical-align:top}th{color:var(--muted);font-weight:600}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 18px;margin:12px 0}
+.steps{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 0}.steps span{font-size:.8rem;padding:3px 10px;border-radius:99px;border:1px solid var(--line);color:var(--muted)}
+.steps .on{border-color:var(--accent);color:var(--accent);font-weight:600}.steps .done{color:var(--a2);border-color:var(--a2)}
+details{margin:8px 0}summary{cursor:pointer;font-weight:600}
+svg{width:100%;height:auto;display:block}svg text{fill:var(--fg);font:13px system-ui,sans-serif}svg .m{fill:var(--muted);font-size:11.5px}
+svg .box{fill:var(--card);stroke:var(--line);stroke-width:1.5}svg .hl{fill:var(--soft);stroke:var(--accent);stroke-width:1.5}svg .zone{fill:none;stroke:var(--a2);stroke-width:1.5;stroke-dasharray:6 4}
+svg .ar{stroke:var(--muted);stroke-width:1.5;fill:none}
+</style>
+</head><body><main>
+<h1>Step 5b · A public chart (podinfo)</h1>
+<p class="sub">The same <code>helm_release</code>, but someone else wrote the chart. You control it only through a pinned version and value overrides.</p>
+<div class="steps"><span class="done">1–5 ✓</span><span class="on">5b public chart</span><span>5c Artifact Registry</span></div>
+
+<h2>Local chart vs public chart</h2>
+<table>
+<tr><th></th><th>Step 5 (demo-app)</th><th>5b (podinfo)</th></tr>
+<tr><td>Source</td><td><code>chart = "${path.root}/charts/demo-app"</code></td><td><code>repository = "oci://ghcr.io/stefanprodan/charts"</code><br><code>chart = "podinfo"</code></td></tr>
+<tr><td>Version</td><td>whatever is in the repo at that commit</td><td><code>version = "6.14.1"</code>: <b>must</b> be pinned</td></tr>
+<tr><td>Templates</td><td>yours, fully known</td><td>a black box: you read its <code>values.yaml</code></td></tr>
+<tr><td>Customisation</td><td>edit templates or values</td><td><code>values</code> (YAML) + <code>set</code> (single keys) only</td></tr>
+<tr><td>Image</td><td><code>busybox</code> from Docker Hub</td><td><code>ghcr.io/stefanprodan/podinfo</code>, chosen by the chart</td></tr>
+</table>
+
+<h2>Reading a 3rd-party chart before installing</h2>
+<pre><code>helm show chart  oci://ghcr.io/stefanprodan/charts/podinfo --version 6.14.1   # metadata
+helm show values oci://ghcr.io/stefanprodan/charts/podinfo --version 6.14.1   # every knob + defaults
+helm template t  oci://ghcr.io/stefanprodan/charts/podinfo --version 6.14.1 \
+  --set ui.color=#2f6fde | less                                            # the exact YAML it would apply</code></pre>
+<p>Always do this for software you don't control. Look for privileged containers, hostPath mounts, ClusterRoles, and Services of type LoadBalancer (cost).</p>
+
+<h2>What our module overrides</h2>
+<table>
+<tr><th>Key</th><th>Chart default</th><th>Ours</th><th>Why</th></tr>
+<tr><td><code>ui.message</code></td><td><code>""</code></td><td>Hello from a public chart…</td><td>visible proof our values were applied</td></tr>
+<tr><td><code>ui.color</code> (via <code>set</code>)</td><td><code>#34577c</code></td><td><code>#2f6fde</code></td><td>demonstrates <code>set</code>, which wins over <code>values</code></td></tr>
+<tr><td><code>resources</code></td><td>requests only (1m / 16Mi), no limits</td><td>10m/32Mi → 100m/64Mi</td><td>a 3rd-party app shouldn't be able to starve the single Spot node</td></tr>
+<tr><td><code>service.type</code></td><td><code>ClusterIP</code></td><td><code>ClusterIP</code> (explicit)</td><td>stating cost-relevant settings explicitly protects against a default changing in a future version</td></tr>
+</table>
+
+<h2>Run it</h2>
+<pre><code>git switch main &amp;&amp; git pull &amp;&amp; git switch -c step-5b-podinfo
+git add -A &amp;&amp; git commit -m "Step 5b: podinfo public chart, pinned 6.14.1" &amp;&amp; git push -u origin step-5b-podinfo
+# PR → plan: 1 to add (module.podinfo.helm_release.this) → merge
+
+git switch main &amp;&amp; git pull
+helm -n podinfo list                              # CHART podinfo-6.14.1  APP VERSION 6.14.1
+helm -n podinfo get values podinfo                # exactly what Terraform passed
+$(terraform output -raw port_forward_podinfo)     # http://localhost:9898</code></pre>
+
+<h2>Exercise — a controlled upgrade</h2>
+<pre><code>git switch -c podinfo-6.15.0
+# root main.tf:  chart_version = "6.15.0"
+git commit -am "podinfo 6.14.1 → 6.15.0" &amp;&amp; git push -u origin podinfo-6.15.0</code></pre>
+<p>In the PR plan you'll see <code>~ update in-place</code> on <code>helm_release</code> with <code>version: "6.14.1" → "6.15.0"</code>. After merge, <code>helm -n podinfo history podinfo</code> shows revision 2. A rollback is a revert PR, not <code>helm rollback</code>: Terraform owns the release, and a manual rollback would show up as drift.</p>
+
+<h2>Check your understanding</h2>
+<details class="card"><summary>What happens if you omit <code>version</code>?</summary><p>Helm installs the latest chart at that moment. A later <code>terraform apply</code> doesn't upgrade it on its own, but a <em>new</em> environment, or the morning re-apply after a destroy, silently gets whatever is newest. The same code then produces different clusters.</p></details>
+<details class="card"><summary><code>values</code> vs <code>set</code>: which wins?</summary><p><code>set</code>. Helm merges in order: chart defaults → each <code>values</code> entry in order → <code>set</code>. Use <code>values</code> for structure and <code>set</code> for a single computed knob. <code>set_sensitive</code> hides a value from plan output.</p></details>
+<details class="card"><summary>Why can the pod pull from ghcr.io?</summary><p>The node has a public IP (<code>enable_nat = false</code>). With private nodes you'd need Cloud NAT, or you'd mirror the image into Artifact Registry. That's the theme of 5c and of most regulated environments.</p></details>
+
+<h2>Next</h2>
+<p><b>5c:</b> package <em>our</em> chart, push it to Artifact Registry as OCI, and switch Step 5's release to that source.</p>
+</main></body></html>

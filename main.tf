@@ -83,3 +83,17 @@ module "app" {
   # The IAM grant must exist before the pod tries to mount the secret.
   depends_on = [module.secrets]
 }
+
+# -----------------------------------------------------------------------------
+# Step 5b - a public 3rd-party chart (podinfo) with a pinned version
+# -----------------------------------------------------------------------------
+module "podinfo" {
+  source = "./modules/podinfo"
+
+  # Pinned on purpose to the previous release: the follow-up exercise is to
+  # bump it to "6.15.0" in a PR and read the upgrade plan.
+  chart_version = "6.14.1"
+
+  # No depends_on needed: helm_release depends on the helm provider, whose
+  # configuration references module.gke - so the cluster always comes first.
+}

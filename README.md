@@ -97,6 +97,15 @@ $(terraform output -raw port_forward)   # then http://localhost:8080
 ```
 Guide: `docs/05-helm.html`
 
+## Step 5b — public chart (podinfo), pinned version
+Branch `step-5b-podinfo` → PR → plan (1 to add: module.podinfo.helm_release.this) → merge.
+```bash
+$(terraform output -raw port_forward_podinfo)   # then http://localhost:9898
+helm -n podinfo list                             # CHART podinfo-6.14.1
+```
+Exercise: bump `chart_version` to `6.15.0` in a new PR and read the upgrade plan.
+Guide: `docs/05b-podinfo.html`
+
 ## Teardown
 `terraform destroy` in the root, then (optionally) in `bootstrap/`
 (empty the bucket first — `force_destroy = false` protects it).
