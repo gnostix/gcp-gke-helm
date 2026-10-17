@@ -1,0 +1,88 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "demo-app.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "demo-app.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "demo-app.labels" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ .Values.serviceAccount.name }}   # <- the identity used to read the secret
+
+      # Only schedule on nodes running the GKE metadata server (Workload Identity).
+      # Our pool has it (GKE_METADATA); the label is added by GKE automatically.
+      nodeSelector:
+        iam.gke.io/gke-metadata-server-enabled: "true"
+
+      securityContext:           # pod-level hardening
+        runAsNonRoot: true
+        runAsUser: 65534         # "nobody"
+        runAsGroup: 65534
+
+      containers:
+        - name: web
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              set -e
+              SECRET_FILE="{{ .Values.secret.mountPath }}/{{ .Values.secret.fileName }}"
+              mkdir -p /tmp/www
+              if [ -s "$SECRET_FILE" ]; then
+                STATUS="read OK"
+                LENGTH=$(wc -c < "$SECRET_FILE" | tr -d ' ')
+                HINT="$(head -c 3 "$SECRET_FILE")***"     # never print the full secret
+              else
+                STATUS="NOT FOUND"; LENGTH=0; HINT="-"
+              fi
+              cat > /tmp/www/index.html <<HTML
+              <html><body style="font-family:sans-serif;max-width:640px;margin:40px auto">
+              <h1>{{ .Values.message }}</h1>
+              <p>Pod: <b>$(hostname)</b> &middot; namespace <b>{{ .Release.Namespace }}</b> &middot; SA <b>{{ .Values.serviceAccount.name }}</b></p>
+              <p>Secret file <code>$SECRET_FILE</code>: <b>$STATUS</b></p>
+              <p>Length: $LENGTH bytes &middot; starts with: <code>$HINT</code></p>
+              <p style="color:#888">Fetched by the GKE Secret Manager add-on using Workload Identity. No key, no Kubernetes Secret.</p>
+              </body></html>
+              HTML
+              exec httpd -f -p {{ .Values.service.targetPort }} -h /tmp/www
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.targetPort }}
+          readinessProbe:        # Service only sends traffic once this succeeds
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 2
+            periodSeconds: 5
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          securityContext:       # container-level hardening
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: secrets
+              mountPath: {{ .Values.secret.mountPath }}
+              readOnly: true
+            - name: www          # writable scratch space (root FS is read-only)
+              mountPath: /tmp
+
+      volumes:
+        - name: secrets
+          csi:
+            driver: secrets-store-gke.csi.k8s.io      # installed by secret_manager_config (Step 4)
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: {{ .Release.Name }}-secrets
+        - name: www
+          emptyDir: {}

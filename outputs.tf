@@ -35,3 +35,12 @@ output "secrets" {
     reader_principal = module.secrets.reader_principal
   }
 }
+
+output "app" {
+  value = module.app.release
+}
+
+output "port_forward" {
+  description = "Then open http://localhost:8080"
+  value       = module.app.port_forward
+}

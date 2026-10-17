@@ -85,6 +85,18 @@ Guide: `docs/03-gke.html`
 3. Branch `step-4-secrets` → PR → plan (3 to add, 1 to change: the cluster add-on) → merge.
 Guide: `docs/04-secrets.html`
 
+## Step 5 — Helm demo app
+```bash
+terraform init -backend-config=backend.hcl            # adds the helm provider + module.app
+terraform providers lock -platform=darwin_arm64 -platform=linux_amd64
+helm lint charts/demo-app --set secret.resourceName=x  # optional local chart check
+```
+Branch `step-5-helm` → PR → plan (1 to add: helm_release) → merge.
+```bash
+$(terraform output -raw port_forward)   # then http://localhost:8080
+```
+Guide: `docs/05-helm.html`
+
 ## Teardown
 `terraform destroy` in the root, then (optionally) in `bootstrap/`
 (empty the bucket first — `force_destroy = false` protects it).
