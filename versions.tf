@@ -6,6 +6,9 @@ terraform {
       source  = "hashicorp/google"
       version = "~> 7.0"
     }
-    # helm + kubernetes providers are added in Step 5.
+    helm = {
+      source  = "hashicorp/helm"
+      version = "~> 3.0" # 3.x: `kubernetes = { ... }` is an attribute, not a block
+    }
   }
 }

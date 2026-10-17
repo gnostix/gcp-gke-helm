@@ -1,0 +1,31 @@
+# Default values. Anything here can be overridden at install time
+# (Terraform passes its own values in modules/app/main.tf).
+
+replicaCount: 1
+
+image:
+  repository: busybox          # ~2 MB: has a shell and a tiny web server (httpd)
+  tag: "1.37"                  # always pin - never rely on "latest"
+  pullPolicy: IfNotPresent
+
+serviceAccount:
+  name: demo-app               # must match the principal granted secretAccessor in Step 4
+
+secret:
+  resourceName: ""             # REQUIRED - e.g. projects/P/secrets/S/versions/latest (set by Terraform)
+  fileName: app-secret.txt     # file name inside the mount
+  mountPath: /var/secrets
+
+message: "Hello from GKE"      # shown on the page
+
+service:
+  port: 80                     # Service port
+  targetPort: 8080             # container port (non-root can't bind < 1024)
+
+resources:
+  requests:
+    cpu: 10m
+    memory: 16Mi
+  limits:
+    cpu: 100m
+    memory: 64Mi

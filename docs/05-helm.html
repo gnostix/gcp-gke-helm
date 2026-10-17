@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Step 5 · Helm</title>
+<style>
+:root{--bg:#fbfaf7;--fg:#1f1e1c;--muted:#6b6862;--card:#fff;--line:#e4e1da;--accent:#2f6fde;--code:#f2f0eb;--a2:#1f9d74;--a3:#c4720f;--soft:#eef3fd}
+@media (prefers-color-scheme:dark){:root{--bg:#18181a;--fg:#e9e7e2;--muted:#9a978f;--card:#222225;--line:#3a3a40;--accent:#7aa7ff;--code:#2a2a2e;--a2:#4cc79c;--a3:#e6a24a;--soft:#232a38}}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.6 system-ui,-apple-system,Segoe UI,sans-serif}
+main{max-width:880px;margin:0 auto;padding:32px 16px 64px}
+h1{font-size:1.9rem;margin:0 0 4px}h2{margin-top:2.2rem;font-size:1.25rem;border-bottom:1px solid var(--line);padding-bottom:6px}
+.sub{color:var(--muted);margin:0 0 24px}
+code{background:var(--code);padding:1px 5px;border-radius:4px;font-size:.9em}
+pre{background:var(--code);padding:14px;border-radius:8px;overflow-x:auto;font-size:.85rem;line-height:1.5}pre code{background:none;padding:0}
+table{width:100%;border-collapse:collapse;font-size:.92rem}td,th{text-align:left;padding:8px;border-bottom:1px solid var(--line);vertical-align:top}th{color:var(--muted);font-weight:600}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 18px;margin:12px 0}
+.steps{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 0}.steps span{font-size:.8rem;padding:3px 10px;border-radius:99px;border:1px solid var(--line);color:var(--muted)}
+.steps .on{border-color:var(--accent);color:var(--accent);font-weight:600}.steps .done{color:var(--a2);border-color:var(--a2)}
+details{margin:8px 0}summary{cursor:pointer;font-weight:600}
+svg{width:100%;height:auto;display:block}svg text{fill:var(--fg);font:13px system-ui,sans-serif}svg .m{fill:var(--muted);font-size:11.5px}
+svg .box{fill:var(--card);stroke:var(--line);stroke-width:1.5}svg .hl{fill:var(--soft);stroke:var(--accent);stroke-width:1.5}svg .zone{fill:none;stroke:var(--a2);stroke-width:1.5;stroke-dasharray:6 4}
+svg .ar{stroke:var(--muted);stroke-width:1.5;fill:none}
+</style>
+</head><body><main>
+<h1>Step 5 · Helm demo app</h1>
+<p class="sub">Terraform's Helm provider installs a local chart. The pod reads the Step 4 secret as a file, using only its Kubernetes identity.</p>
+<div class="steps"><span class="done">1 Foundation ✓</span><span class="done">2a CI/CD ✓</span><span class="done">2 Network ✓</span><span class="done">3 GKE ✓</span><span class="done">4 Secrets ✓</span><span class="on">5 Helm app</span></div>
+
+<h2>The whole chain</h2>
+<svg viewBox="0 0 820 260" role="img" aria-label="Terraform helm provider reaches GKE via DNS endpoint and installs chart; pod mounts secret via CSI add-on and Workload Identity">
+<defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0L10,5L0,10z" fill="#888"/></marker></defs>
+<rect class="box" x="10" y="20" width="200" height="80" rx="10"/><text x="24" y="46" font-weight="600">terraform (CI or laptop)</text><text class="m" x="24" y="66">helm provider</text><text class="m" x="24" y="84">exec: gke-gcloud-auth-plugin</text>
+<rect class="hl" x="250" y="20" width="190" height="80" rx="10"/><text x="264" y="46" font-weight="600">GKE DNS endpoint</text><text class="m" x="264" y="66">IAM: container.clusters.connect</text><text class="m" x="264" y="84">gke-….gke.goog</text>
+<path class="ar" d="M210 60 H248" marker-end="url(#a)"/>
+<rect class="zone" x="480" y="10" width="330" height="240" rx="14"/><text x="496" y="34" font-weight="600">namespace demo (release demo-app)</text>
+<rect class="box" x="496" y="46" width="140" height="40" rx="6"/><text x="508" y="70">ServiceAccount</text>
+<rect class="box" x="652" y="46" width="146" height="40" rx="6"/><text x="664" y="70">SecretProviderClass</text>
+<rect class="hl" x="496" y="100" width="302" height="80" rx="8"/><text x="510" y="124" font-weight="600">Deployment → pod (busybox httpd :8080)</text><text class="m" x="510" y="144">serviceAccountName: demo-app</text><text class="m" x="510" y="162">CSI volume → /var/secrets/app-secret.txt</text>
+<rect class="box" x="496" y="194" width="302" height="40" rx="6"/><text x="508" y="218">Service (ClusterIP :80) ← kubectl port-forward</text>
+<path class="ar" d="M440 60 H478" marker-end="url(#a)"/>
+<rect class="box" x="10" y="150" width="430" height="90" rx="10"/><text x="24" y="176" font-weight="600">On pod start (node side)</text><text class="m" x="24" y="196">CSI driver → token for ns/demo/sa/demo-app → STS → Secret Manager</text><text class="m" x="24" y="214">IAM on the secret: secretAccessor ✓ (Step 4) → bytes written to the pod's</text><text class="m" x="24" y="232">in-memory mount; no Kubernetes Secret is created</text>
+<path class="ar" d="M494 140 C460 140 460 170 442 180" marker-end="url(#a)"/>
+</svg>
+
+<h2>File tour</h2>
+<table>
+<tr><th>File</th><th>What it teaches</th></tr>
+<tr><td><code>charts/demo-app/Chart.yaml</code></td><td>Chart metadata. <code>version</code> = the chart's version, <code>appVersion</code> = the app's.</td></tr>
+<tr><td><code>charts/demo-app/values.yaml</code></td><td>Defaults, overridable at install. <code>secret.resourceName</code> is empty on purpose; the template's <code>required</code> fails the install if nobody sets it.</td></tr>
+<tr><td><code>templates/_helpers.tpl</code></td><td>Named templates for labels, reused by every manifest via <code>include … | nindent N</code>.</td></tr>
+<tr><td><code>templates/serviceaccount.yaml</code></td><td>The pod identity. Its name + namespace <em>are</em> the IAM principal from Step 4.</td></tr>
+<tr><td><code>templates/secretproviderclass.yaml</code></td><td><code>provider: gke</code>: what to fetch from Secret Manager and which file name to use.</td></tr>
+<tr><td><code>templates/deployment.yaml</code></td><td>CSI volume with <code>driver: secrets-store-gke.csi.k8s.io</code>, <code>nodeSelector</code> for metadata-server nodes, non-root + read-only root FS, readiness probe. The page shows only 3 characters of the secret.</td></tr>
+<tr><td><code>templates/service.yaml</code></td><td>ClusterIP: internal and free. A LoadBalancer would add a billed forwarding rule.</td></tr>
+<tr><td><code>modules/app/main.tf</code></td><td><code>helm_release</code>: local chart path via <code>path.root</code>, values via <code>yamlencode()</code>, <code>wait = true</code> so a failing mount fails the apply.</td></tr>
+<tr><td>root <code>providers.tf</code></td><td>Helm provider v3 syntax <code>kubernetes = { … }</code>. Host = DNS endpoint, auth = <code>exec</code> plugin, so no token lands in the CI plan artifact.</td></tr>
+<tr><td>root <code>main.tf</code></td><td>Namespace/SA come from <code>module.secrets</code> outputs, so IAM grant and pod identity can't drift. <code>depends_on</code> makes sure the grant exists before the pod starts.</td></tr>
+<tr><td><code>terraform.yml</code></td><td><code>setup-gcloud</code> installs <code>gke-gcloud-auth-plugin</code> on the runner. <code>charts/**</code> changes now trigger CI.</td></tr>
+</table>
+
+<h2>Before committing (on your Mac)</h2>
+<pre><code>git switch -c step-5-helm                      # new files come along
+
+# 1. confirm the DNS endpoint has a publicly trusted cert (we don't pass a CA):
+EP=$(terraform output -json gke | jq -r .dns_endpoint)
+curl -sS -o /dev/null -w "%{http_code}\n" https://$EP/version
+#   any HTTP code (401/403/200) = TLS OK.  "SSL certificate problem" = tell me, we add the CA.
+
+# 2. register the helm provider + module, refresh the lock for both platforms
+terraform init -backend-config=backend.hcl
+terraform providers lock -platform=darwin_arm64 -platform=linux_amd64
+
+# 3. optional: lint + render the chart locally
+helm lint charts/demo-app --set secret.resourceName=x
+helm template demo charts/demo-app --set secret.resourceName=projects/p/secrets/s/versions/latest
+
+# 4. local plan (needs the secret var because it's a required input)
+export TF_VAR_demo_secret='…'
+terraform plan            # expect: 1 to add (module.app.helm_release.this)</code></pre>
+
+<h2>Verify after merge</h2>
+<pre><code>git switch main &amp;&amp; git pull
+kubectl -n demo get all,secretproviderclass,sa
+helm -n demo list                               # release demo-app, STATUS deployed
+$(terraform output -raw port_forward)           # http://localhost:8080
+kubectl -n demo get secrets                     # only Helm's release record. The value is NOT a K8s Secret</code></pre>
+
+<h2>Prove the security model</h2>
+<pre><code># same image, same namespace, DIFFERENT service account (default) → mount is denied
+kubectl -n demo run intruder --image=busybox:1.37 --restart=Never \
+  --overrides='{"spec":{"volumes":[{"name":"s","csi":{"driver":"secrets-store-gke.csi.k8s.io","readOnly":true,"volumeAttributes":{"secretProviderClass":"demo-app-secrets"}}}],"containers":[{"name":"c","image":"busybox:1.37","command":["sleep","3600"],"volumeMounts":[{"name":"s","mountPath":"/s"}]}]}}'
+kubectl -n demo describe pod intruder | tail -5  # FailedMount … PermissionDenied
+kubectl -n demo delete pod intruder</code></pre>
+
+<h2>Check your understanding</h2>
+<details class="card"><summary>Who installs the release, and with what Kubernetes permissions?</summary><p>In CI: the <code>github-terraform</code> SA, whose IAM role <code>container.admin</code> GKE maps to full Kubernetes API access. Locally: you (Owner). Kubernetes RBAC applies <em>in addition</em> to IAM. Either one can grant access.</p></details>
+<details class="card"><summary>Why does a failed secret mount fail the Terraform apply?</summary><p><code>wait = true</code>: Helm waits for the Deployment to be Ready. A pod stuck in <code>ContainerCreating</code> (FailedMount) never becomes Ready, so after 300 s the release is marked failed and the apply errors, with the reason in <code>kubectl describe pod</code>.</p></details>
+<details class="card"><summary>Why <code>exec</code> instead of <code>token = data.google_client_config.x.access_token</code>?</summary><p>Data-source results are stored in the saved plan, and our plan is uploaded as an artifact (publicly downloadable on a public repo). An exec plugin fetches the token at the moment of use, so it's never written down.</p></details>
+<details class="card"><summary>Caveat: cluster and Helm in one stack</summary><p>The Helm provider is configured from <code>module.gke</code> outputs. Creating everything from zero in one apply (the morning <em>apply</em> after a <em>destroy</em>) usually works, because creating a release doesn't need the cluster at plan time. If it ever fails at plan, the fix is a two-phase apply (cluster first, then app), or moving apps to their own stack or GitOps, which is what we'll discuss in the extensions.</p></details>
+
+<h2>Next</h2>
+<p>Lab complete. Extensions when you're ready: <b>5b</b> a public chart (podinfo) with pinned version, <b>5c</b> our chart packaged into Artifact Registry (OCI).</p>
+</main></body></html>

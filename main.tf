@@ -68,4 +68,18 @@ module "secrets" {
   depends_on = [module.gke, google_project_service.this]
 }
 
-# Step 5 -> module "app" (Helm)
+# -----------------------------------------------------------------------------
+# Step 5 - Helm: a demo app that reads the Step 4 secret via the GKE add-on
+# -----------------------------------------------------------------------------
+module "app" {
+  source = "./modules/app"
+
+  # The SAME namespace/SA that Step 4 granted access to - read from the
+  # secrets module's outputs so the two can never drift apart.
+  namespace       = module.secrets.k8s_namespace
+  service_account = module.secrets.k8s_service_account
+  secret_resource = module.secrets.secret_version_resource
+
+  # The IAM grant must exist before the pod tries to mount the secret.
+  depends_on = [module.secrets]
+}
