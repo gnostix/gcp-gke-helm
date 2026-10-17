@@ -63,6 +63,14 @@ resource "google_container_cluster" "this" {
     workload_pool = "${var.project_id}.svc.id.goog"
   }
 
+  # --- add-ons -----------------------------------------------------------------
+  # Managed Secret Manager CSI driver: pods mount Secret Manager secrets as
+  # files (driver secrets-store-gke.csi.k8s.io), authenticated by Workload
+  # Identity. Google installs and upgrades it. Used in Step 4/5.
+  secret_manager_config {
+    enabled = true
+  }
+
   # --- operations: upgrades & cost -------------------------------------------
   release_channel {
     channel = var.release_channel

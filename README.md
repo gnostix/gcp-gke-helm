@@ -79,6 +79,12 @@ kubectl get nodes -o wide
 End of day: Actions → terraform → Run workflow (main) → **destroy**. Morning: → **apply**.
 Guide: `docs/03-gke.html`
 
+## Step 4 — Secret Manager
+1. GitHub → Settings → Secrets and variables → Actions → **Secrets** → New repository secret `DEMO_SECRET`.
+2. Locally (only for local `plan`): `export TF_VAR_demo_secret='…'`
+3. Branch `step-4-secrets` → PR → plan (3 to add, 1 to change: the cluster add-on) → merge.
+Guide: `docs/04-secrets.html`
+
 ## Teardown
 `terraform destroy` in the root, then (optionally) in `bootstrap/`
 (empty the bucket first — `force_destroy = false` protects it).

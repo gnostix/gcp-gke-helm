@@ -6,3 +6,6 @@ name       = "gke-lab"
 
 # Cost switch: false = no Cloud NAT, nodes get public IPs (cheapest)
 enable_nat = false
+
+# demo_secret is NOT set here (would be plain text on disk). Use:
+#   export TF_VAR_demo_secret="something-secret"
