@@ -70,6 +70,15 @@ Open a PR with the network code → review the plan comment → merge → the wo
 Locally you can still `terraform plan` to experiment, but let CI do the `apply`.
 Guide: `docs/02-network.html`
 
+## Step 3 — GKE (zonal, 1 Spot node)
+Branch `step-3-gke` → PR → review plan (expect 5 to add) → merge → CI applies (~8-12 min).
+```bash
+$(terraform output -raw get_credentials)   # kubectl via the DNS endpoint
+kubectl get nodes -o wide
+```
+End of day: Actions → terraform → Run workflow (main) → **destroy**. Morning: → **apply**.
+Guide: `docs/03-gke.html`
+
 ## Teardown
 `terraform destroy` in the root, then (optionally) in `bootstrap/`
 (empty the bucket first — `force_destroy = false` protects it).

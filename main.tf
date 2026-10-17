@@ -20,6 +20,31 @@ module "network" {
   depends_on = [google_project_service.this]
 }
 
-# Step 3 -> module "gke"
+# -----------------------------------------------------------------------------
+# Step 3 - GKE (zonal Standard cluster, 1 Spot node)
+# -----------------------------------------------------------------------------
+module "gke" {
+  source = "./modules/gke"
+
+  project_id = var.project_id
+  name       = var.name
+  zone       = var.zone
+
+  # Module outputs -> module inputs: this is how modules are wired together.
+  # These references also give Terraform the order: network first, then GKE.
+  network_id          = module.network.network_id
+  subnet_id           = module.network.subnet_id
+  pods_range_name     = module.network.pods_range_name
+  services_range_name = module.network.services_range_name
+  node_tag            = module.network.node_tag
+
+  # Private nodes only make sense when they have NAT for egress.
+  private_nodes = var.enable_nat
+
+  # Cheap defaults live in the module: e2-medium, Spot, 30 GB pd-standard, 1 node.
+
+  depends_on = [google_project_service.this] # container.googleapis.com must be on
+}
+
 # Step 4 -> module "secrets"
 # Step 5 -> module "app" (Helm)
