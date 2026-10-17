@@ -59,14 +59,22 @@ for dir in $stacks; do
     fi
   fi
 
-  if out=$(cd "$dir" && terraform validate -no-color 2>&1); then
+  out=$(cd "$dir" && terraform validate -no-color 2>&1) && ok=1 || ok=0
+
+  # A module block was added since the last init: install it and retry once.
+  # (-backend=false: no GCP access needed, the configured backend is untouched)
+  if [ "$ok" = 0 ] && echo "$out" | grep -q "Module not installed"; then
+    echo "pre-commit: new module in $label - running terraform init -backend=false..." >&2
+    if (cd "$dir" && terraform init -backend=false -input=false -lockfile=readonly >/dev/null); then
+      out=$(cd "$dir" && terraform validate -no-color 2>&1) && ok=1 || ok=0
+    fi
+  fi
+
+  if [ "$ok" = 1 ]; then
     echo "pre-commit: validate $label ✓" >&2
   else
     echo "pre-commit: terraform validate failed in $label:" >&2
     echo "$out" | sed 's/^/    /' >&2
-    # Common cause: a new module since last init.
-    echo "$out" | grep -q "Module not installed" && \
-      echo "    hint: cd $dir && terraform init -backend=false" >&2
     failed=1
   fi
 done

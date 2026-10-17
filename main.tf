@@ -46,5 +46,26 @@ module "gke" {
   depends_on = [google_project_service.this] # container.googleapis.com must be on
 }
 
-# Step 4 -> module "secrets"
+# -----------------------------------------------------------------------------
+# Step 4 - Secret Manager (+ access for a Kubernetes SA via Workload Identity)
+# -----------------------------------------------------------------------------
+module "secrets" {
+  source = "./modules/secrets"
+
+  project_id = var.project_id
+  region     = var.region # same region as the zonal cluster - required by the GKE add-on
+  name       = var.name
+
+  secret_value   = var.demo_secret
+  secret_version = var.demo_secret_version
+
+  # Who may read it: the Kubernetes SA that Step 5's Helm chart will create.
+  k8s_namespace       = "demo"
+  k8s_service_account = "demo-app"
+
+  # The Workload Identity pool (PROJECT.svc.id.goog) only exists once the
+  # cluster does, and secretmanager.googleapis.com must be enabled.
+  depends_on = [module.gke, google_project_service.this]
+}
+
 # Step 5 -> module "app" (Helm)

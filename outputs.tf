@@ -27,3 +27,11 @@ output "get_credentials" {
   description = "Run this to point kubectl at the cluster (via the DNS endpoint)."
   value       = "gcloud container clusters get-credentials ${module.gke.cluster_name} --location ${module.gke.location} --project ${var.project_id} --dns-endpoint"
 }
+
+output "secrets" {
+  value = {
+    secret_id        = module.secrets.secret_id
+    version_resource = module.secrets.secret_version_resource
+    reader_principal = module.secrets.reader_principal
+  }
+}

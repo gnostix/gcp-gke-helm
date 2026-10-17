@@ -45,6 +45,10 @@ env:
   TF_IN_AUTOMATION: "true"     # shorter, CI-friendly output
   TF_INPUT: "false"            # never wait for interactive input
   TF_VAR_project_id: ${{ vars.GCP_PROJECT_ID }}   # replaces the git-ignored terraform.tfvars
+  # The one real SECRET: GitHub masks it in logs. It's an ephemeral variable, so
+  # it isn't stored in the saved plan - the apply job must receive it again,
+  # which is why it's set here at workflow level (both jobs see it).
+  TF_VAR_demo_secret: ${{ secrets.DEMO_SECRET }}
   # Other variables use their defaults (region, zone, name, enable_nat=false).
 
 jobs:

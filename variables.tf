@@ -32,3 +32,17 @@ variable "enable_nat" {
   type        = bool
   default     = false
 }
+
+# --- Step 4: Secret Manager ---------------------------------------------------
+variable "demo_secret" {
+  description = "Demo secret value. CI: GitHub secret DEMO_SECRET. Laptop: export TF_VAR_demo_secret=..."
+  type        = string
+  sensitive   = true
+  ephemeral   = true # never written to state or to saved plan files
+}
+
+variable "demo_secret_version" {
+  description = "Bump to publish a new value of demo_secret as a new secret version."
+  type        = number
+  default     = 1
+}
