@@ -13,3 +13,17 @@ output "network" {
     nat_enabled    = module.network.nat_enabled
   }
 }
+
+output "gke" {
+  value = {
+    cluster      = module.gke.cluster_name
+    location     = module.gke.location
+    dns_endpoint = module.gke.dns_endpoint
+    node_sa      = module.gke.node_service_account
+  }
+}
+
+output "get_credentials" {
+  description = "Run this to point kubectl at the cluster (via the DNS endpoint)."
+  value       = "gcloud container clusters get-credentials ${module.gke.cluster_name} --location ${module.gke.location} --project ${var.project_id} --dns-endpoint"
+}

@@ -116,8 +116,11 @@ jobs:
 
   apply:
     needs: plan
+    # Only ever change GCP from main: a manual run on a feature branch can plan,
+    # but never apply/destroy unreviewed code.
     if: >-
       github.event_name != 'pull_request' &&
+      github.ref == 'refs/heads/main' &&
       needs.plan.outputs.exitcode == '2' &&
       (github.event_name == 'push' || inputs.action != 'plan')
     runs-on: ubuntu-24.04
