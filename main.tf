@@ -24,24 +24,33 @@ module "network" {
 # Step 3 - GKE (zonal Standard cluster, 1 Spot node)
 # -----------------------------------------------------------------------------
 module "gke" {
-  source = "./modules/gke"
+  # Shared, versioned module (Phase 4). ?ref pins an immutable release tag.
+  # Upgrading = changing this ref in a PR and reading the plan.
+  source = "git::https://github.com/gnostix/terraform-google-gke.git?ref=v1.0.0"
 
   project_id = var.project_id
   name       = var.name
-  zone       = var.zone
+  location   = var.zone # module input is `location`: a zone => zonal cluster
 
-  # Module outputs -> module inputs: this is how modules are wired together.
-  # These references also give Terraform the order: network first, then GKE.
+  # Module outputs -> module inputs: network first, then GKE.
   network_id          = module.network.network_id
   subnet_id           = module.network.subnet_id
   pods_range_name     = module.network.pods_range_name
   services_range_name = module.network.services_range_name
-  node_tag            = module.network.node_tag
+  node_network_tags   = [module.network.node_tag]
 
   # Private nodes only make sense when they have NAT for egress.
   private_nodes = var.enable_nat
 
-  # Cheap defaults live in the module: e2-medium, Spot, 30 GB pd-standard, 1 node.
+  # --- lab profile: everything that differs from the module's defaults ---------
+  # (the module defaults are production-safe; the lab is cheap + disposable)
+  deletion_protection         = false                 # default true
+  spot                        = true                  # default false
+  disk_type                   = "pd-standard"         # default pd-balanced
+  disk_size_gb                = 30                    # default 100
+  logging_components          = ["SYSTEM_COMPONENTS"] # default + WORKLOADS
+  managed_prometheus          = false                 # default true
+  enable_secret_manager_addon = true                  # default false (Step 4/5 need it)
 
   depends_on = [google_project_service.this] # container.googleapis.com must be on
 }
