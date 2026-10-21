@@ -6,7 +6,7 @@ Practice repo: Standard GKE + VPC + Secret Manager + a Helm-deployed app.
 bootstrap/          one-time: GCS bucket for remote state (local state)
 modules/
   network/          Step 2 - VPC, subnet + secondary ranges, Cloud NAT, firewall
-  (gke)             Step 3 - now the shared module github.com/gnostix/terraform-google-gke (?ref=v1.0.0)
+  (gke)             Step 3 - now the shared module github.com/gnostix/terraform-google-gke (?ref=v1.1.0)
   secrets/          Step 4 - Secret Manager secret + IAM for the app
   app/              Step 5 - Helm release of a demo app reading the secret
 *.tf                root stack: wires modules together
@@ -107,7 +107,7 @@ Exercise: bump `chart_version` to `6.15.0` in a new PR and read the upgrade plan
 Guide: `docs/05b-podinfo.html`
 
 ## Shared GKE module (Phase 4)
-`module "gke"` now comes from `git::https://github.com/gnostix/terraform-google-gke.git?ref=v1.0.0`.
+`module "gke"` now comes from `git::https://github.com/gnostix/terraform-google-gke.git?ref=v1.1.0`.
 The local `modules/gke/` was removed; the lab passes its cheap profile explicitly
 (spot, pd-standard 30 GB, deletion_protection=false, system-only logging, no Prometheus, Secret Manager add-on).
 Upgrade = change `?ref=` in a PR → `terraform init` → read the plan.
