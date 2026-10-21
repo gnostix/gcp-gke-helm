@@ -26,7 +26,7 @@ module "network" {
 module "gke" {
   # Shared, versioned module (Phase 4). ?ref pins an immutable release tag.
   # Upgrading = changing this ref in a PR and reading the plan.
-  source = "git::https://github.com/gnostix/terraform-google-gke.git?ref=v1.0.0"
+  source = "git::https://github.com/gnostix/terraform-google-gke.git?ref=v1.1.0"
 
   project_id = var.project_id
   name       = var.name
