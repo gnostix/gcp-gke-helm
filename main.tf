@@ -24,9 +24,10 @@ module "network" {
 # Step 3 - GKE (zonal Standard cluster, 1 Spot node)
 # -----------------------------------------------------------------------------
 module "gke" {
-  # Shared, versioned module (Phase 4). ?ref pins an immutable release tag.
-  # Upgrading = changing this ref in a PR and reading the plan.
-  source = "git::https://github.com/gnostix/terraform-google-gke.git?ref=v1.1.0"
+  # Shared, versioned module. ?ref pins an immutable release tag.
+  # v2.0.0 (BREAKING): pool settings moved into node_pools. The module's
+  # `moved` block keeps the existing pool: plan must show "moved", 0 changes.
+  source = "git::https://github.com/gnostix/terraform-google-gke.git?ref=v2.0.0"
 
   project_id = var.project_id
   name       = var.name
@@ -37,20 +38,27 @@ module "gke" {
   subnet_id           = module.network.subnet_id
   pods_range_name     = module.network.pods_range_name
   services_range_name = module.network.services_range_name
-  node_network_tags   = [module.network.node_tag]
 
   # Private nodes only make sense when they have NAT for egress.
   private_nodes = var.enable_nat
 
-  # --- lab profile: everything that differs from the module's defaults ---------
-  # (the module defaults are production-safe; the lab is cheap + disposable)
+  # --- lab profile: cluster settings that differ from the module's defaults ----
   deletion_protection         = false                 # default true
-  spot                        = true                  # default false
-  disk_type                   = "pd-standard"         # default pd-balanced
-  disk_size_gb                = 30                    # default 100
   logging_components          = ["SYSTEM_COMPONENTS"] # default + WORKLOADS
   managed_prometheus          = false                 # default true
   enable_secret_manager_addon = true                  # default false (Step 4/5 need it)
+
+  # --- node pools (v2.0.0) ------------------------------------------------------
+  # Key "default" = the existing pool "gke-lab-pool" (same name, same settings
+  # as the v1.x top-level inputs it replaces).
+  node_pools = {
+    default = {
+      spot         = true                      # was: spot              (v1.x)
+      disk_type    = "pd-standard"             # was: disk_type
+      disk_size_gb = 30                        # was: disk_size_gb
+      network_tags = [module.network.node_tag] # was: node_network_tags
+    }
+  }
 
   depends_on = [google_project_service.this] # container.googleapis.com must be on
 }
