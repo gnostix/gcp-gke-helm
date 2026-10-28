@@ -1,0 +1,99 @@
+# Helm chart CI/CD (exercise 5c, PR B)
+#
+#   pull_request (charts/** changed) -> lint + package + "version not yet published?" check
+#   push to main (charts/** changed) -> same checks, then helm push to Artifact Registry
+#
+# The registry has immutable tags: a published version can never change.
+# So a changed chart MUST bump `version` in Chart.yaml - the PR check enforces it.
+name: chart
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "charts/**"
+      - ".github/workflows/chart.yml"
+  push:
+    branches: [main]
+    paths:
+      - "charts/**"
+      - ".github/workflows/chart.yml"
+
+permissions:
+  contents: read
+  id-token: write # WIF login to GCP
+
+concurrency:
+  group: chart-publish
+  cancel-in-progress: false
+
+env:
+  HELM_VERSION: "v4.3.1"                     # keep in line with `helm version --short` locally
+  REGISTRY_HOST: europe-west1-docker.pkg.dev # `helm registry login` wants the hostname only
+  CHART_REGISTRY: ${{ vars.CHART_REGISTRY }} # europe-west1-docker.pkg.dev/<project>/charts
+
+jobs:
+  chart:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install Helm (pinned)
+        uses: azure/setup-helm@v4
+        with:
+          version: ${{ env.HELM_VERSION }}
+
+      - name: Authenticate to Google Cloud (keyless)
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_CI_SA }}
+
+      - uses: google-github-actions/setup-gcloud@v3
+
+      - name: Log in to Artifact Registry
+        run: |
+          gcloud auth print-access-token \
+            | helm registry login -u oauth2accesstoken --password-stdin "$REGISTRY_HOST"
+
+      - name: Lint, package, check version, publish
+        env:
+          IS_MAIN: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          echo "### Helm charts" >> "$GITHUB_STEP_SUMMARY"
+
+          for dir in charts/*/; do
+            name=$(awk '/^name:/{print $2; exit}' "$dir/Chart.yaml")
+            version=$(awk '/^version:/{print $2; exit}' "$dir/Chart.yaml")
+            ref="oci://$CHART_REGISTRY/$name"
+            echo "::group::$name $version"
+
+            # 1. lint (also validates values.schema.json). The schema requires a real
+            #    secret path, so pass a syntactically valid dummy one.
+            helm lint "$dir" --set secret.resourceName=projects/p/secrets/s/versions/latest
+
+            # 2. package -> dist/<name>-<version>.tgz
+            helm package "$dir" -d dist
+
+            # 3. is this version already in the registry?
+            if helm show chart "$ref" --version "$version" >/dev/null 2>&1; then
+              if [ "$IS_MAIN" = "true" ]; then
+                echo "$name $version already published - nothing to push."
+                echo "- \`$name:$version\` already published, skipped" >> "$GITHUB_STEP_SUMMARY"
+              else
+                echo "::error file=$dir/Chart.yaml::$name $version is already published and the registry is immutable. Bump 'version' in $dir/Chart.yaml."
+                exit 1
+              fi
+            elif [ "$IS_MAIN" = "true" ]; then
+              # 4. publish (main only)
+              out=$(helm push "dist/$name-$version.tgz" "oci://$CHART_REGISTRY" 2>&1)
+              echo "$out"
+              digest=$(echo "$out" | awk '/Digest:/{print $2}')
+              echo "- pushed \`$name:$version\` → \`$CHART_REGISTRY/$name\` (\`$digest\`)" >> "$GITHUB_STEP_SUMMARY"
+            else
+              echo "- \`$name:$version\` is new - will be published when merged" >> "$GITHUB_STEP_SUMMARY"
+            fi
+            echo "::endgroup::"
+          done
