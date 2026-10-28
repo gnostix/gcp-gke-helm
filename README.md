@@ -97,6 +97,16 @@ $(terraform output -raw port_forward)   # then http://localhost:8080
 ```
 Guide: `docs/05-helm.html`
 
+## Publishing charts (5c)
+Charts in `charts/` are published as OCI artifacts to Artifact Registry
+(`oci://europe-west1-docker.pkg.dev/<project>/charts`, created in `bootstrap/`).
+- Workflow `.github/workflows/chart.yml`: on PRs it lints and checks the version; on merge to `main` it pushes.
+- The registry has **immutable tags**: a changed chart must bump `version` in `Chart.yaml`, or the PR check fails.
+- Requires the GitHub variable `CHART_REGISTRY` (= `terraform -chdir=bootstrap output chart_registry` without `oci://`).
+```bash
+helm show chart oci://europe-west1-docker.pkg.dev/<project>/charts/demo-app --version 0.2.0
+```
+
 ## Step 5b — public chart (podinfo), pinned version
 Branch `step-5b-podinfo` → PR → plan (1 to add: module.podinfo.helm_release.this) → merge.
 ```bash
