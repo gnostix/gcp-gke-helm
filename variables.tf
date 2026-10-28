@@ -44,5 +44,5 @@ variable "demo_secret" {
 variable "demo_secret_version" {
   description = "Bump to publish a new value of demo_secret as a new secret version."
   type        = number
-  default     = 1
+  default     = 2 # 2: DEMO_SECRET changed (rotation)
 }
