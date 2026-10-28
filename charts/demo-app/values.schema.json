@@ -1,0 +1,92 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "demo-app values",
+  "description": "Helm validates the MERGED values (values.yaml + -f files + --set) against this schema on install, upgrade, lint and template. Invalid values = the command fails before anything reaches the cluster.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["replicaCount", "image", "serviceAccount", "secret", "service", "resources"],
+  "properties": {
+    "replicaCount": {
+      "description": "Number of pods. Capped at 5 for the single-node lab.",
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 5
+    },
+    "image": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repository", "tag"],
+      "properties": {
+        "repository": { "type": "string", "minLength": 1 },
+        "tag": {
+          "description": "Pinned tag. 'latest' is rejected: deployments must be reproducible.",
+          "type": "string",
+          "minLength": 1,
+          "not": { "const": "latest" }
+        },
+        "pullPolicy": { "type": "string", "enum": ["Always", "IfNotPresent", "Never"] }
+      }
+    },
+    "serviceAccount": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name"],
+      "properties": {
+        "name": {
+          "description": "Kubernetes name (DNS-1123 label). Must match the Workload Identity principal granted in Step 4.",
+          "type": "string",
+          "pattern": "^[a-z0-9]([-a-z0-9]{0,61}[a-z0-9])?$"
+        }
+      }
+    },
+    "secret": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["resourceName", "fileName", "mountPath"],
+      "properties": {
+        "resourceName": {
+          "description": "Secret Manager version: projects/P/secrets/S/versions/V (global) or projects/P/locations/L/secrets/S/versions/V (regional).",
+          "type": "string",
+          "pattern": "^projects/[^/]+/(locations/[^/]+/)?secrets/[^/]+/versions/[^/]+$"
+        },
+        "fileName": { "type": "string", "pattern": "^[A-Za-z0-9._-]+$" },
+        "mountPath": { "type": "string", "pattern": "^/" }
+      }
+    },
+    "message": { "type": "string", "maxLength": 200 },
+    "service": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["port", "targetPort"],
+      "properties": {
+        "port": { "type": "integer", "minimum": 1, "maximum": 65535 },
+        "targetPort": {
+          "description": "Container port. >= 1024 because the container runs as non-root.",
+          "type": "integer",
+          "minimum": 1024,
+          "maximum": 65535
+        }
+      }
+    },
+    "resources": {
+      "description": "Both requests and limits are mandatory: the pod shares a small Spot node.",
+      "type": "object",
+      "required": ["requests", "limits"],
+      "properties": {
+        "requests": { "$ref": "#/definitions/cpuMemory" },
+        "limits": { "$ref": "#/definitions/cpuMemory" }
+      }
+    }
+  },
+  "definitions": {
+    "cpuMemory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cpu", "memory"],
+      "properties": {
+        "cpu": { "type": ["string", "number"] },
+        "memory": { "type": "string", "pattern": "^[0-9]+(Ki|Mi|Gi)$" }
+      }
+    }
+  }
+}

@@ -3,3 +3,6 @@
 Open it locally:
   kubectl -n {{ .Release.Namespace }} port-forward svc/{{ .Release.Name }} 8080:{{ .Values.service.port }}
   then browse http://localhost:8080
+
+Verify end to end (Service -> pod -> secret mount):
+  helm test {{ .Release.Name }} -n {{ .Release.Namespace }} --logs

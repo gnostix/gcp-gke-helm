@@ -23,6 +23,8 @@ override.tf.json
 # Credentials that must never land in git (SA keys, kubeconfigs, env files)
 *.json
 !**/*.example.json
+# Helm chart schemas are code, not credentials
+!charts/**/values.schema.json
 *.pem
 *.key
 kubeconfig*
