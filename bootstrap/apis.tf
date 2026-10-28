@@ -12,6 +12,7 @@ locals {
     "sts.googleapis.com",                  # exchange GitHub's OIDC token for a Google token
     "cloudresourcemanager.googleapis.com", # project IAM bindings
     "serviceusage.googleapis.com",         # list/enable APIs - CI's calls are billed to THIS project
+    "artifactregistry.googleapis.com",     # OCI registry for Helm charts (5c)
   ]
 }
 
