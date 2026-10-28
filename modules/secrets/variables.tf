@@ -33,7 +33,7 @@ variable "secret_value" {
 variable "secret_version" {
   description = "Bump this number to push a new secret_value as a new version (write-only values can't be diffed)."
   type        = number
-  default     = 2
+  default     = 1
 }
 
 # --- who may read it ------------------------------------------------------------
