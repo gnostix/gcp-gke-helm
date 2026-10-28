@@ -2,5 +2,5 @@ apiVersion: v2                 # Helm 3 chart format
 name: demo-app
 description: Tiny web page that proves a pod can read a Secret Manager secret via the GKE add-on
 type: application
-version: 0.2.0                 # version of the CHART (0.2.0: values.schema.json + helm test)
+version: 0.2.1                 # version of the CHART (0.2.0: values.schema.json + helm test)
 appVersion: "1.0.0"            # version of the APP it deploys (informational)
