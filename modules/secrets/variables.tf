@@ -2,6 +2,11 @@ variable "project_id" {
   type = string
 }
 
+variable "project_number" {
+  description = "GCP project NUMBER (not ID) - part of every Workload Identity principal. Passed in by the root, so it is known at plan time."
+  type        = string
+}
+
 variable "region" {
   description = "Single replica location. Must match the cluster's region for the GKE Secret Manager add-on."
   type        = string
