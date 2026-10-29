@@ -70,9 +70,11 @@ jobs:
             ref="oci://$CHART_REGISTRY/$name"
             echo "::group::$name $version"
 
-            # 1. lint (also validates values.schema.json). The schema requires a real
-            #    secret path, so pass a syntactically valid dummy one.
-            helm lint "$dir" --set secret.resourceName=projects/p/secrets/s/versions/latest
+            # 1. lint (also validates values.schema.json). A chart can ship
+            #    ci-values.yaml with dummy values its schema requires.
+            lint_args=()
+            if [ -f "$dir/ci-values.yaml" ]; then lint_args=(-f "$dir/ci-values.yaml"); fi
+            helm lint "$dir" "${lint_args[@]}"
 
             # 2. package -> dist/<name>-<version>.tgz
             helm package "$dir" -d dist

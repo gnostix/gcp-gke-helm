@@ -1,0 +1,24 @@
+# ResourceFlavor = "which nodes". Kueue copies nodeLabels into the admitted
+# pods' nodeSelector and adds the tolerations - jobs don't set them themselves.
+flavor:
+  name: spot-batch
+  nodeLabels:
+    pool: batch                # label added by the GKE module to the "batch" node pool
+  tolerations:
+    - key: workload
+      operator: Equal
+      value: batch
+      effect: NoSchedule       # matches the pool's taint workload=batch:NoSchedule
+
+# ClusterQueue = "how much". Total quota for all admitted jobs at once.
+# ~2 x e2-standard-2 after system overhead. More demand => jobs wait (Pending).
+clusterQueue:
+  name: batch
+quota:
+  cpu: "2500m"
+  memory: 8Gi
+
+# LocalQueue = "where users submit". Lives in the release namespace;
+# jobs reference it with the label kueue.x-k8s.io/queue-name: batch
+localQueue:
+  name: batch

@@ -1,0 +1,22 @@
+# Cluster-scoped. The quota pool (like a Slurm partition's limits).
+# Only LocalQueues in the selected namespaces can submit to it.
+apiVersion: kueue.x-k8s.io/v1beta2
+kind: ClusterQueue
+metadata:
+  name: {{ .Values.clusterQueue.name }}
+  labels:
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+spec:
+  namespaceSelector:
+    matchLabels:
+      kubernetes.io/metadata.name: {{ .Release.Namespace }}
+  resourceGroups:
+    - coveredResources: ["cpu", "memory"]
+      flavors:
+        - name: {{ .Values.flavor.name }}
+          resources:
+            - name: cpu
+              nominalQuota: {{ .Values.quota.cpu | quote }}
+            - name: memory
+              nominalQuota: {{ .Values.quota.memory | quote }}

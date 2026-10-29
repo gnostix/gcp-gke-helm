@@ -1,0 +1,6 @@
+apiVersion: v2
+name: batch-queues
+description: Kueue queue configuration for the lab - ResourceFlavor (Spot batch pool), ClusterQueue (quota), LocalQueue
+type: application
+version: 0.1.0                 # chart version (published to Artifact Registry)
+appVersion: "kueue-v1beta2"    # the Kueue API it targets (informational)
