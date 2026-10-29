@@ -1,9 +1,3 @@
-# The project NUMBER (not ID) is part of every Workload Identity principal.
-# A data source READS existing information; it creates nothing.
-data "google_project" "this" {
-  project_id = var.project_id
-}
-
 # -----------------------------------------------------------------------------
 # The secret: a named container with metadata. It holds no data itself.
 # -----------------------------------------------------------------------------
@@ -49,7 +43,7 @@ resource "google_secret_manager_secret_version" "demo" {
 # -----------------------------------------------------------------------------
 locals {
   ksa_principal = join("/", [
-    "principal://iam.googleapis.com/projects/${data.google_project.this.number}",
+    "principal://iam.googleapis.com/projects/${var.project_number}",
     "locations/global/workloadIdentityPools/${var.project_id}.svc.id.goog",
     "subject/ns/${var.k8s_namespace}/sa/${var.k8s_service_account}",
   ])

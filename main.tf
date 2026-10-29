@@ -58,6 +58,25 @@ module "gke" {
       disk_size_gb = 30                        # was: disk_size_gb
       network_tags = [module.network.node_tag] # was: node_network_tags
     }
+
+    # Batch pool for Kueue jobs (Slurm-partition equivalent).
+    # Spot + scale-to-zero: costs nothing while idle. The taint keeps normal
+    # pods off; Kueue injects the matching toleration + nodeSelector into
+    # admitted jobs (from the ResourceFlavor in charts/batch-queues).
+    batch = {
+      machine_type = "e2-standard-2" # 2 vCPU / 8 GB per node
+      spot         = true
+      autoscaling  = { min_nodes = 0, max_nodes = 2 }
+      disk_type    = "pd-standard"
+      disk_size_gb = 30
+      network_tags = [module.network.node_tag]
+      labels       = { workload = "batch" } # node labels: pool=batch (added by the module), workload=batch
+      taints = [{
+        key    = "workload"
+        value  = "batch"
+        effect = "NO_SCHEDULE"
+      }]
+    }
   }
 
   depends_on = [google_project_service.this] # container.googleapis.com must be on
@@ -66,12 +85,21 @@ module "gke" {
 # -----------------------------------------------------------------------------
 # Step 4 - Secret Manager (+ access for a Kubernetes SA via Workload Identity)
 # -----------------------------------------------------------------------------
+
+# The project NUMBER is needed for Workload Identity principals. Read it HERE
+# (root, no depends_on) so it is known at plan time. Inside module.secrets it
+# would be deferred by the module's depends_on and force IAM replacements.
+data "google_project" "this" {
+  project_id = var.project_id
+}
+
 module "secrets" {
   source = "./modules/secrets"
 
-  project_id = var.project_id
-  region     = var.region # same region as the zonal cluster - required by the GKE add-on
-  name       = var.name
+  project_id     = var.project_id
+  project_number = data.google_project.this.number
+  region         = var.region # same region as the zonal cluster - required by the GKE add-on
+  name           = var.name
 
   secret_value   = var.demo_secret
   secret_version = var.demo_secret_version
