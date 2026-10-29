@@ -97,6 +97,11 @@ module "app" {
   service_account = module.secrets.k8s_service_account
   secret_resource = module.secrets.secret_version_resource
 
+  # 5c: install the PUBLISHED chart from Artifact Registry, not the local folder.
+  # Deploying a new chart version = changing chart_version here, in a PR.
+  chart_repository = "oci://${var.region}-docker.pkg.dev/${var.project_id}/charts"
+  chart_version    = "0.2.1"
+
   # The IAM grant must exist before the pod tries to mount the secret.
   depends_on = [module.secrets]
 }

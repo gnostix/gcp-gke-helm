@@ -10,7 +10,6 @@ on:
     branches: [main]
     paths:
       - "**.tf"
-      - "charts/**"
       - ".terraform.lock.hcl"
       - ".github/workflows/terraform.yml"
       - "!bootstrap/**"
@@ -18,7 +17,6 @@ on:
     branches: [main]
     paths:
       - "**.tf"
-      - "charts/**"
       - ".terraform.lock.hcl"
       - ".github/workflows/terraform.yml"
       - "!bootstrap/**"
@@ -51,7 +49,8 @@ env:
   # it isn't stored in the saved plan - the apply job must receive it again,
   # which is why it's set here at workflow level (both jobs see it).
   TF_VAR_demo_secret: ${{ secrets.DEMO_SECRET }}
-  # Other variables use their defaults (region, zone, name, enable_nat=false).
+  HELM_VERSION: "v4.3.1"
+  CHART_REGISTRY_HOST: europe-west1-docker.pkg.dev
 
 jobs:
   plan:
@@ -71,6 +70,18 @@ jobs:
       - uses: google-github-actions/setup-gcloud@v3
         with:
           install_components: gke-gcloud-auth-plugin
+
+                # 5c: the helm provider pulls demo-app from Artifact Registry. It reads
+      # Helm's registry login file, so log in with a short-lived token first
+      # (no token in the saved plan, unlike a provider `registries` password).
+      - uses: azure/setup-helm@v4
+        with:
+          version: ${{ env.HELM_VERSION }}
+
+      - name: Log in to Artifact Registry (Helm)
+        run: |
+          gcloud auth print-access-token \
+            | helm registry login -u oauth2accesstoken --password-stdin "$CHART_REGISTRY_HOST"
 
       - uses: hashicorp/setup-terraform@v4
         with:
@@ -149,6 +160,17 @@ jobs:
       - uses: google-github-actions/setup-gcloud@v3
         with:
           install_components: gke-gcloud-auth-plugin
+      # 5c: the helm provider pulls demo-app from Artifact Registry. It reads
+      # Helm's registry login file, so log in with a short-lived token first
+      # (no token in the saved plan, unlike a provider `registries` password).
+      - uses: azure/setup-helm@v4
+        with:
+          version: ${{ env.HELM_VERSION }}
+
+      - name: Log in to Artifact Registry (Helm)
+        run: |
+          gcloud auth print-access-token \
+            | helm registry login -u oauth2accesstoken --password-stdin "$CHART_REGISTRY_HOST"
 
       - uses: hashicorp/setup-terraform@v4
         with:
