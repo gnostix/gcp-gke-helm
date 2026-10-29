@@ -106,6 +106,16 @@ Charts in `charts/` are published as OCI artifacts to Artifact Registry
 ```bash
 helm show chart oci://europe-west1-docker.pkg.dev/<project>/charts/demo-app --version 0.2.0
 ```
+## Deploying a chart version (5c)
+`module "app"` installs `demo-app` from Artifact Registry with a pinned `chart_version` (root `main.tf`).
+- **Build** (publish): change `charts/**` + bump `version` in `Chart.yaml` → `chart.yml` pushes it.
+- **Release** (deploy): change `chart_version` in `main.tf` → `terraform.yml` plans/applies it.
+- **Rollback**: a PR setting `chart_version` back to an older published version.
+
+Local `terraform plan` needs a registry login first (token valid ~1 h):
+```bash
+gcloud auth print-access-token | helm registry login -u oauth2accesstoken --password-stdin europe-west1-docker.pkg.dev
+```
 
 ## Step 5b — public chart (podinfo), pinned version
 Branch `step-5b-podinfo` → PR → plan (1 to add: module.podinfo.helm_release.this) → merge.

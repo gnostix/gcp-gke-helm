@@ -24,3 +24,22 @@ variable "message" {
   type        = string
   default     = "Hello from GKE, deployed by Terraform + Helm"
 }
+
+
+variable "chart_repository" {
+  description = "OCI repository of the chart, e.g. oci://europe-west1-docker.pkg.dev/<project>/charts. null = install the local folder charts/demo-app (Step 5 behaviour)."
+  type        = string
+  default     = null
+}
+
+variable "chart_version" {
+  description = "Exact chart version to install from chart_repository. Required when chart_repository is set."
+  type        = string
+  default     = null
+
+  validation {
+    # Cross-variable validation (Terraform >= 1.9): a registry without a pinned version is not allowed.
+    condition     = var.chart_version != null || var.chart_repository == null
+    error_message = "chart_version is required when chart_repository is set."
+  }
+}

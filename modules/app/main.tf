@@ -7,9 +7,12 @@ resource "helm_release" "this" {
   name      = var.release_name
   namespace = var.namespace
 
-  # Local chart in this repo. path.root = the root module's directory, so the
-  # path works no matter where this module lives.
-  chart = "${path.root}/charts/demo-app"
+  # Chart source:
+  #  - chart_repository set (5c): a PUBLISHED, pinned version from an OCI registry
+  #  - chart_repository null:     the local folder in this repo (Step 5 behaviour)
+  repository = var.chart_repository
+  chart      = var.chart_repository == null ? "${path.root}/charts/demo-app" : "demo-app"
+  version    = var.chart_version
 
   create_namespace = true # the namespace has no other owner yet
 
