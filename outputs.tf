@@ -53,3 +53,11 @@ output "port_forward_podinfo" {
   description = "Then open http://localhost:9898"
   value       = module.podinfo.port_forward
 }
+
+
+output "batch" {
+  value = {
+    kueue  = module.batch.kueue
+    queues = module.batch.queues
+  }
+}

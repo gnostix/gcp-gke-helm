@@ -119,3 +119,17 @@ module "podinfo" {
   # No depends_on needed: helm_release depends on the helm provider, whose
   # configuration references module.gke - so the cluster always comes first.
 }
+
+
+# -----------------------------------------------------------------------------
+# Kueue exercise - batch queueing on the Spot "batch" pool
+# -----------------------------------------------------------------------------
+module "batch" {
+  source = "./modules/batch"
+
+  kueue_chart_version = "0.20.3" # upstream, pinned
+
+  # Our queue config, published by chart.yml (PR K2)
+  queues_chart_repository = "oci://${var.region}-docker.pkg.dev/${var.project_id}/charts"
+  queues_chart_version    = "0.1.0"
+}

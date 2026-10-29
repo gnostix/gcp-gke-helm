@@ -1,0 +1,25 @@
+# Submit:  kubectl create -f examples/jobs/sample-job.yaml
+# 3 pods x 500m CPU = 1500m of the queue's 2500m quota.
+# Submit it twice: the 2nd job waits in the queue (3000m > 2500m) until the 1st finishes.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  generateName: sample-job-      # kubectl create gives each submission a unique name
+  namespace: batch-jobs
+  labels:
+    kueue.x-k8s.io/queue-name: batch # <- the ONLY Kueue-specific line
+spec:
+  parallelism: 3
+  completions: 3
+  template:
+    spec:
+      # No nodeSelector / tolerations here: Kueue injects them from the
+      # ResourceFlavor (pool=batch, toleration workload=batch) on admission.
+      restartPolicy: Never
+      containers:
+        - name: work
+          image: busybox:1.37
+          command: ["/bin/sh", "-c", "echo running on $(hostname); sleep 120"]
+          resources:
+            requests: { cpu: 500m, memory: 256Mi } # Kueue counts REQUESTS against the quota
+            limits:   { cpu: 500m, memory: 256Mi }
