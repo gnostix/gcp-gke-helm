@@ -57,6 +57,12 @@ module "gke" {
       disk_type    = "pd-standard"             # was: disk_type
       disk_size_gb = 30                        # was: disk_size_gb
       network_tags = [module.network.node_tag] # was: node_network_tags
+
+      # System headroom: when the batch pool scales up, kube-dns and
+      # konnectivity-agent add replicas that can only land here. A 2nd node
+      # gives them room instead of evicting Kueue/apps. Idle 2nd node is
+      # removed by the autoscaler (~10 min).
+      autoscaling = { min_nodes = 1, max_nodes = 2 }
     }
 
     # Batch pool for Kueue jobs (Slurm-partition equivalent).
