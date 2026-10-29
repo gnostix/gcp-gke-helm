@@ -76,3 +76,43 @@ resource "helm_release" "queues" {
   # so Kueue's finalizers are processed while the controller still runs.
   depends_on = [helm_release.kueue]
 }
+
+# -----------------------------------------------------------------------------
+# Release 3: KubeRay operator - the EXECUTOR. Turns a RayJob into head/worker
+# pods. Kueue (the GATE) already has the ray.io/rayjob integration enabled by
+# default; once these CRDs exist, queue-labelled RayJobs are held suspended
+# until Kueue admits them.
+#
+# CRDs ship in the chart's crds/ folder: Helm installs them once and never
+# upgrades or deletes them (unlike Kueue's, which are templates).
+# -----------------------------------------------------------------------------
+resource "helm_release" "kuberay" {
+  name             = "kuberay-operator"
+  namespace        = var.kuberay_namespace
+  create_namespace = true
+
+  repository = "https://ray-project.github.io/kuberay-helm/"
+  chart      = "kuberay-operator"
+  version    = var.kuberay_chart_version
+
+  values = [
+    yamlencode({
+      # Watch only the training namespace (trainloop: trainloop-system only).
+      watchNamespace = [var.training_namespace]
+
+      # Same placement/protection as Kueue: always-on default pool, and not
+      # evicted for normal workloads.
+      nodeSelector      = { pool = "default" }
+      priorityClassName = kubernetes_priority_class_v1.platform_critical.metadata[0].name
+
+      # Chart sets only limits (100m/512Mi), so requests = limits. Ask for less.
+      resources = {
+        requests = { cpu = "50m", memory = "128Mi" }
+        limits   = { cpu = "200m", memory = "512Mi" }
+      }
+    })
+  ]
+
+  wait    = true
+  timeout = 600
+}

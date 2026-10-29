@@ -24,3 +24,20 @@ variable "queues_chart_version" {
   description = "batch-queues chart version. Pinned."
   type        = string
 }
+
+variable "kuberay_chart_version" {
+  description = "Upstream kuberay-operator chart version (https://ray-project.github.io/kuberay-helm/). Pinned."
+  type        = string
+}
+
+variable "kuberay_namespace" {
+  description = "Namespace for the KubeRay operator."
+  type        = string
+  default     = "kuberay-system"
+}
+
+variable "training_namespace" {
+  description = "The only namespace KubeRay watches; training runs live here (trainloop: trainloop-system)."
+  type        = string
+  default     = "training"
+}

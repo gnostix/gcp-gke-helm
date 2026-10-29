@@ -166,4 +166,5 @@ module "batch" {
   # Our queue config, published by chart.yml (PR K2)
   queues_chart_repository = "oci://${var.region}-docker.pkg.dev/${var.project_id}/charts"
   queues_chart_version    = "0.1.0"
+  kuberay_chart_version   = "1.7.1" # upstream, pinned (same as trainloop)
 }
