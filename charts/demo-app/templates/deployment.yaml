@@ -48,6 +48,7 @@ spec:
               <html><body style="font-family:sans-serif;max-width:640px;margin:40px auto">
               <h1>{{ .Values.message }}</h1>
               <p>Pod: <b>$(hostname)</b> &middot; namespace <b>{{ .Release.Namespace }}</b> &middot; SA <b>{{ .Values.serviceAccount.name }}</b></p>
+                            <p>Chart: <b>{{ .Chart.Name }}-{{ .Chart.Version }}</b> &middot; app <b>{{ .Chart.AppVersion }}</b></p>
               <p>Secret file <code>$SECRET_FILE</code>: <b>$STATUS</b></p>
               <p>Length: $LENGTH bytes &middot; starts with: <code>$HINT</code></p>
               <p style="color:#888">Fetched by the GKE Secret Manager add-on using Workload Identity. No key, no Kubernetes Secret.</p>
