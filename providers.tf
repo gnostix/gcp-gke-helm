@@ -25,3 +25,17 @@ provider "helm" {
     }
   }
 }
+
+# -----------------------------------------------------------------------------
+# Kubernetes provider: for plain cluster objects that don't belong in a chart
+# (e.g. the PriorityClass Kueue needs BEFORE its chart is installed).
+# Same auth as Helm: DNS endpoint + gke-gcloud-auth-plugin, no token in plan.
+# Note: here `exec` is a BLOCK (in the Helm provider v3 it's an attribute).
+# -----------------------------------------------------------------------------
+provider "kubernetes" {
+  host = "https://${module.gke.dns_endpoint}"
+  exec {
+    api_version = "client.authentication.k8s.io/v1beta1"
+    command     = "gke-gcloud-auth-plugin"
+  }
+}

@@ -10,5 +10,9 @@ terraform {
       source  = "hashicorp/helm"
       version = "~> 3.0" # 3.x: `kubernetes = { ... }` is an attribute, not a block
     }
+    kubernetes = {
+      source  = "hashicorp/kubernetes"
+      version = "~> 3.0"
+    }
   }
 }
