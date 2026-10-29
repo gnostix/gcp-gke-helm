@@ -14,3 +14,12 @@ output "queues" {
     submit_label  = "kueue.x-k8s.io/queue-name: batch"
   }
 }
+
+output "kuberay" {
+  value = {
+    namespace       = helm_release.kuberay.namespace
+    chart_version   = helm_release.kuberay.version
+    status          = helm_release.kuberay.status
+    watch_namespace = var.training_namespace
+  }
+}
