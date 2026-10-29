@@ -100,7 +100,7 @@ module "app" {
   # 5c: install the PUBLISHED chart from Artifact Registry, not the local folder.
   # Deploying a new chart version = changing chart_version here, in a PR.
   chart_repository = "oci://${var.region}-docker.pkg.dev/${var.project_id}/charts"
-  chart_version    = "0.2.1"
+  chart_version    = "0.3.1"
 
   # The IAM grant must exist before the pod tries to mount the secret.
   depends_on = [module.secrets]
