@@ -132,6 +132,17 @@ The local `modules/gke/` was removed; the lab passes its cheap profile explicitl
 (spot, pd-standard 30 GB, deletion_protection=false, system-only logging, no Prometheus, Secret Manager add-on).
 Upgrade = change `?ref=` in a PR → `terraform init` → read the plan.
 
+## Kueue exercise — batch queue on the Spot pool
+Kueue 0.20.3 (`modules/batch`, release `kueue`) + our queues (`charts/batch-queues`, release `batch-queues`).
+```bash
+kubectl create -f examples/jobs/sample-job.yaml          # submit (repeat to exceed the quota)
+kubectl -n batch-jobs get workloads                      # Kueue: ADMITTED / pending
+kubectl get clusterqueue batch                           # PENDING WORKLOADS / ADMITTED WORKLOADS
+kubectl get nodes -L pool -w                             # batch nodes 0 → 1..2 → 0 (~10 min after jobs finish)
+```
+**Before the evening destroy:** `kubectl -n batch-jobs delete jobs --all`. Kueue's finalizers can block
+uninstall while jobs exist. Uninstalling the `kueue` release also deletes its CRDs and all queue objects.
+
 ## Teardown
 `terraform destroy` in the root, then (optionally) in `bootstrap/`
 (empty the bucket first — `force_destroy = false` protects it).
