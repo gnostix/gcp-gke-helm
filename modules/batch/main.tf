@@ -15,6 +15,55 @@ resource "kubernetes_priority_class_v1" "platform_critical" {
   description    = "Platform controllers (Kueue): never evicted for normal workloads."
 }
 
+# -----------------------------------------------------------------------------
+# Kueue controller configuration (trainloop-style scoping).
+# controllerManagerConfigYaml is ONE string -> Helm can't merge it, so this is
+# the FULL config: upstream 0.20.3 defaults + our three changes (marked).
+# -----------------------------------------------------------------------------
+locals {
+  kueue_config = {
+    apiVersion = "config.kueue.x-k8s.io/v1beta2"
+    kind       = "Configuration"
+
+    # --- upstream defaults (unchanged) ---------------------------------------
+    health         = { healthProbeBindAddress = ":8081" }
+    metrics        = { bindAddress = ":8443" }
+    webhook        = { port = 9443 }
+    leaderElection = { leaderElect = true, resourceName = "c1f6bfd2.kueue.x-k8s.io" }
+    controller = {
+      groupKindConcurrency = {
+        "Job.batch"                     = 5
+        "Pod"                           = 5
+        "Workload.kueue.x-k8s.io"       = 10
+        "LocalQueue.kueue.x-k8s.io"     = 5
+        "Cohort.kueue.x-k8s.io"         = 1
+        "ClusterQueue.kueue.x-k8s.io"   = 5
+        "ResourceFlavor.kueue.x-k8s.io" = 1
+      }
+    }
+    clientConnection = { qps = 300, burst = 500 }
+
+    # --- CHANGE 1: only these namespaces are managed. Also becomes the
+    # webhooks' namespaceSelector -> a Kueue outage can't block other namespaces.
+    managedJobsNamespaceSelector = {
+      matchExpressions = [{
+        key      = "kubernetes.io/metadata.name"
+        operator = "In"
+        values   = [var.queues_namespace, var.training_namespace]
+      }]
+    }
+
+    # --- CHANGE 2: explicit (it's the default). Jobs without a queue-name label
+    # are not queued - e.g. the launcher Jobs in "training" run immediately.
+    manageJobsWithoutQueueName = false
+
+    # --- CHANGE 3: only the integrations we use. Drops pod/deployment/
+    # statefulset, whose webhooks would otherwise be failurePolicy=Fail.
+    integrations = {
+      frameworks = ["batch/job", "ray.io/rayjob"]
+    }
+  }
+}
 
 # -----------------------------------------------------------------------------
 # Release 1: Kueue itself - CRDs (as templates), controller, admission webhooks.
@@ -32,6 +81,10 @@ resource "helm_release" "kueue" {
 
   values = [
     yamlencode({
+      managerConfig = {
+        controllerManagerConfigYaml = yamlencode(local.kueue_config)
+      }
+
       controllerManager = {
         manager = {
           priorityClassName = kubernetes_priority_class_v1.platform_critical.metadata[0].name
