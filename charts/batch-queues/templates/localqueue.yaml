@@ -1,0 +1,11 @@
+# Namespaced. What users submit to: label kueue.x-k8s.io/queue-name: <name>
+apiVersion: kueue.x-k8s.io/v1beta2
+kind: LocalQueue
+metadata:
+  name: {{ .Values.localQueue.name }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+spec:
+  clusterQueue: {{ .Values.clusterQueue.name }}

@@ -1,0 +1,56 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "batch-queues values",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["flavor", "clusterQueue", "quota", "localQueue"],
+  "properties": {
+    "flavor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "nodeLabels"],
+      "properties": {
+        "name": { "type": "string", "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$" },
+        "nodeLabels": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": { "type": "string" }
+        },
+        "tolerations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["key", "effect"],
+            "properties": {
+              "key": { "type": "string" },
+              "operator": { "type": "string", "enum": ["Equal", "Exists"] },
+              "value": { "type": "string" },
+              "effect": { "type": "string", "enum": ["NoSchedule", "PreferNoSchedule", "NoExecute"] }
+            }
+          }
+        }
+      }
+    },
+    "clusterQueue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name"],
+      "properties": { "name": { "type": "string", "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$" } }
+    },
+    "quota": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cpu", "memory"],
+      "properties": {
+        "cpu": { "type": "string", "pattern": "^[0-9]+(\\.[0-9]+)?m?$" },
+        "memory": { "type": "string", "pattern": "^[0-9]+(Ki|Mi|Gi)$" }
+      }
+    },
+    "localQueue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name"],
+      "properties": { "name": { "type": "string", "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$" } }
+    }
+  }
+}

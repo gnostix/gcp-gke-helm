@@ -1,0 +1,16 @@
+# Cluster-scoped. "Jobs admitted on this flavor run on nodes with these labels,
+# and get these tolerations." Kueue injects both into the pods.
+apiVersion: kueue.x-k8s.io/v1beta2
+kind: ResourceFlavor
+metadata:
+  name: {{ .Values.flavor.name }}
+  labels:
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+spec:
+  nodeLabels:
+    {{- toYaml .Values.flavor.nodeLabels | nindent 4 }}
+  {{- with .Values.flavor.tolerations }}
+  tolerations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}

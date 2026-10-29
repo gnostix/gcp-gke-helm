@@ -1,0 +1,3 @@
+# Values used only by CI to lint/template this chart (the schema requires a real-looking path).
+secret:
+  resourceName: projects/p/secrets/s/versions/latest
