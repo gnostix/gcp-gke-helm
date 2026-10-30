@@ -133,7 +133,7 @@ The local `modules/gke/` was removed; the lab passes its cheap profile explicitl
 Upgrade = change `?ref=` in a PR → `terraform init` → read the plan.
 
 ## Kueue exercise — batch queue on the Spot pool
-Kueue 0.20.3 (`modules/batch`, release `kueue`) + our queues (`charts/batch-queues`, release `batch-queues`).
+Kueue 0.20.3 (`modules/gke-batch`, release `kueue`) + our queues (`charts/batch-queues`, release `batch-queues`).
 ```bash
 kubectl create -f examples/jobs/sample-job.yaml          # submit (repeat to exceed the quota)
 kubectl -n batch-jobs get workloads                      # Kueue: ADMITTED / pending
