@@ -55,9 +55,10 @@ output "port_forward_podinfo" {
 }
 
 
-output "batch" {
+output "gke_batch" {
   value = {
-    kueue  = module.batch.kueue
-    queues = module.batch.queues
+    kueue   = module.gke_batch.kueue
+    queues  = module.gke_batch.queues
+    kuberay = module.gke_batch.kuberay
   }
 }

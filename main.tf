@@ -158,8 +158,8 @@ module "podinfo" {
 # -----------------------------------------------------------------------------
 # Kueue exercise - batch queueing on the Spot "batch" pool
 # -----------------------------------------------------------------------------
-module "batch" {
-  source = "./modules/batch"
+module "gke_batch" {
+  source = "./modules/gke-batch"
 
   kueue_chart_version = "0.20.3" # upstream, pinned
 
@@ -167,4 +167,13 @@ module "batch" {
   queues_chart_repository = "oci://${var.region}-docker.pkg.dev/${var.project_id}/charts"
   queues_chart_version    = "0.1.0"
   kuberay_chart_version   = "1.7.1" # upstream, pinned (same as trainloop)
+}
+
+# Renamed module.batch -> module.gke_batch (frees "batch" for a Cloud Batch
+# module). Moves every resource's state address; no destroy/recreate.
+# Without this, Kueue would be uninstalled and its CRDs (and all queues and
+# workloads) deleted.
+moved {
+  from = module.batch
+  to   = module.gke_batch
 }
