@@ -59,3 +59,11 @@ resource "google_storage_bucket_iam_member" "submitter_data" {
   role   = "roles/storage.objectAdmin" # upload inputs, download outputs
   member = each.value
 }
+
+resource "google_artifact_registry_repository_iam_member" "runner_pull" {
+  project    = var.project_id
+  location   = google_artifact_registry_repository.dockerhub.location
+  repository = google_artifact_registry_repository.dockerhub.name
+  role       = "roles/artifactregistry.reader" # pull only, this repo only
+  member     = google_service_account.runner.member
+}

@@ -35,3 +35,32 @@ resource "google_storage_bucket" "data" {
     }
   }
 }
+
+# Pull-through cache of Docker Hub. Job VMs have no external IP, so they can't
+# reach docker.io - they pull <region>-docker.pkg.dev/<p>/<repo>/library/<img>
+# over Private Google Access. First pull fetches from Docker Hub and caches it.
+resource "google_artifact_registry_repository" "dockerhub" {
+  project       = var.project_id
+  location      = var.region
+  repository_id = "${var.name}-dockerhub"
+  description   = "Docker Hub proxy for Cloud Batch jobs."
+  format        = "DOCKER"
+  mode          = "REMOTE_REPOSITORY"
+
+  remote_repository_config {
+    description = "Docker Hub"
+    docker_repository {
+      public_repository = "DOCKER_HUB"
+    }
+  }
+
+  # Cached images are deleted after 7 days (re-fetched on next use).
+  cleanup_policy_dry_run = false
+  cleanup_policies {
+    id     = "delete-cached-after-7d"
+    action = "DELETE"
+    condition {
+      older_than = "604800s"
+    }
+  }
+}

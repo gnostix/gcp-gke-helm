@@ -5,10 +5,12 @@
 #   scripts/submit-batch.sh batch-jobs/hello-script.json [job-name]
 #
 # Templates hold placeholders (__REGION__, __SERVICE_ACCOUNT__, __NETWORK__,
-# __SUBNETWORK__, __BUCKET__). Real values come from Terraform's root output
+# __SUBNETWORK__, __BUCKET__, __IMAGE_REGISTRY__, __PROVISIONING_MODEL__,
+# __JOB_NAME__). Real values come from Terraform's root output
 # "cloud_batch", so no project-specific value is ever committed.
 # Needs: terraform (with access to the state), jq, gcloud.
-# -----------------------------------------------------------------------------
+#
+#   PROVISIONING_MODEL=SPOT scripts/submit-batch.sh ...   (default: SPOT)# -----------------------------------------------------------------------------
 set -euo pipefail
 
 [[ $# -ge 1 ]] || { echo "usage: $0 <template.json> [job-name]" >&2; exit 2; }
@@ -27,6 +29,14 @@ get() { jq -r ".$1" <<<"$SETTINGS"; }
 PROJECT_ID="$(get project_id)"
 REGION="$(get region)"
 
+# STANDARD by default: Spot jobs fail in Batch's pre-check on this free-trial
+# project (Spot works on GKE). Override: PROVISIONING_MODEL=SPOT
+PROVISIONING_MODEL="${PROVISIONING_MODEL:-SPOT}"
+case "$PROVISIONING_MODEL" in
+  STANDARD|SPOT) ;;
+  *) echo "PROVISIONING_MODEL must be STANDARD or SPOT" >&2; exit 2 ;;
+esac
+
 RENDERED="$(mktemp)"
 trap 'rm -f "$RENDERED"' EXIT
 
@@ -36,6 +46,9 @@ sed -e "s|__REGION__|${REGION}|g" \
     -e "s|__NETWORK__|$(get network)|g" \
     -e "s|__SUBNETWORK__|$(get subnetwork)|g" \
     -e "s|__BUCKET__|$(get bucket)|g" \
+    -e "s|__PROVISIONING_MODEL__|${PROVISIONING_MODEL}|g" \
+    -e "s|__IMAGE_REGISTRY__|$(get image_registry)|g" \
+    -e "s|__JOB_NAME__|${JOB_NAME}|g" \
     "$TEMPLATE" > "$RENDERED"
 
 # Fail early instead of sending a half-filled job to the API.

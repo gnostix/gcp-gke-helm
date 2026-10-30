@@ -15,5 +15,7 @@ output "job_settings" {
     network         = var.network_id
     subnetwork      = var.subnet_id
     bucket          = google_storage_bucket.data.name
+    image_registry  = "${google_artifact_registry_repository.dockerhub.location}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.dockerhub.repository_id}"
+
   }
 }
