@@ -30,7 +30,7 @@ get() { jq -r ".$1" <<<"$SETTINGS"; }
 PROJECT_ID="$(get project_id)"
 REGION="$(get region)"
 
-PROVISIONING_MODEL="${PROVISIONING_MODEL:-STANDARD}"
+PROVISIONING_MODEL="${PROVISIONING_MODEL:-SPOT}"
 case "$PROVISIONING_MODEL" in
   STANDARD|SPOT) ;;
   *) echo "PROVISIONING_MODEL must be STANDARD or SPOT" >&2; exit 2 ;;
