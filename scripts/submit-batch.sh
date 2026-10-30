@@ -8,6 +8,9 @@
 # __SUBNETWORK__, __BUCKET__). Real values come from Terraform's root output
 # "cloud_batch", so no project-specific value is ever committed.
 # Needs: terraform (with access to the state), jq, gcloud.
+#
+# PROVISIONING_MODEL=SPOT scripts/submit-batch.sh ...   (default: STANDARD)
+# Spot jobs fail in Batch's pre-check on this free-trial project (works on GKE).
 # -----------------------------------------------------------------------------
 set -euo pipefail
 
@@ -27,6 +30,12 @@ get() { jq -r ".$1" <<<"$SETTINGS"; }
 PROJECT_ID="$(get project_id)"
 REGION="$(get region)"
 
+PROVISIONING_MODEL="${PROVISIONING_MODEL:-STANDARD}"
+case "$PROVISIONING_MODEL" in
+  STANDARD|SPOT) ;;
+  *) echo "PROVISIONING_MODEL must be STANDARD or SPOT" >&2; exit 2 ;;
+esac
+
 RENDERED="$(mktemp)"
 trap 'rm -f "$RENDERED"' EXIT
 
@@ -36,6 +45,7 @@ sed -e "s|__REGION__|${REGION}|g" \
     -e "s|__NETWORK__|$(get network)|g" \
     -e "s|__SUBNETWORK__|$(get subnetwork)|g" \
     -e "s|__BUCKET__|$(get bucket)|g" \
+    -e "s|__PROVISIONING_MODEL__|${PROVISIONING_MODEL}|g" \
     "$TEMPLATE" > "$RENDERED"
 
 # Fail early instead of sending a half-filled job to the API.
