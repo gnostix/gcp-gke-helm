@@ -7,6 +7,8 @@ locals {
     "secretmanager.googleapis.com",        # Secret Manager
     "iam.googleapis.com",                  # service accounts
     "cloudresourcemanager.googleapis.com", # project-level IAM bindings
+    "batch.googleapis.com",                # Cloud Batch (module cloud_batch)
+    "logging.googleapis.com",              # Batch job logs
   ]
 }
 

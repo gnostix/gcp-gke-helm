@@ -71,6 +71,8 @@ locals {
     "roles/iam.serviceAccountUser",          # step 3: attach the node SA to VMs
     "roles/resourcemanager.projectIamAdmin", # step 3/4: grant roles to those SAs
     "roles/secretmanager.admin",             # step 4
+    "roles/storage.admin",                   # C1: Cloud Batch data bucket
+
   ]
 }
 

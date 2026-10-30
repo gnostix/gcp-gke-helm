@@ -169,3 +169,23 @@ module "gke_batch" {
   kuberay_chart_version   = "1.7.1" # upstream, pinned (same as trainloop)
 }
 
+
+# -----------------------------------------------------------------------------
+# Cloud Batch - managed batch on VMs (no cluster). Platform only; users submit
+# jobs from batch-jobs/ (C2+).
+# -----------------------------------------------------------------------------
+module "cloud_batch" {
+  source = "./modules/cloud-batch"
+
+  project_id = var.project_id
+  region     = var.region
+  name       = var.name
+
+  # Job VMs land in our subnet (Private Google Access on -> no NAT needed).
+  network_id = module.network.network_id
+  subnet_id  = module.network.subnet_id
+
+  submitters = var.batch_submitters
+
+  depends_on = [google_project_service.this] # batch API before anything else
+}
