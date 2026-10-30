@@ -46,3 +46,10 @@ variable "demo_secret_version" {
   type        = number
   default     = 2 # 2: DEMO_SECRET changed (rotation)
 }
+
+# --- Cloud Batch ----------------------------------------------------------------
+variable "batch_submitters" {
+  description = "Principals allowed to submit Cloud Batch jobs (C4 adds the CI SA). Project Owners can already submit."
+  type        = list(string)
+  default     = []
+}

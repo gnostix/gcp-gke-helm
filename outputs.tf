@@ -62,3 +62,8 @@ output "gke_batch" {
     kuberay = module.gke_batch.kuberay
   }
 }
+
+
+output "cloud_batch" {
+  value = module.cloud_batch.job_settings
+}
