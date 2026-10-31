@@ -24,3 +24,13 @@ variable "wif_pool_id" {
   type        = string
   default     = "github"
 }
+
+variable "seqera_org_id" {
+  description = "Seqera Cloud organization ID (numeric). Shown in the Seqera Google WIF credential form."
+  type        = string
+}
+
+variable "seqera_workspace_id" {
+  description = "Seqera Cloud workspace ID (numeric). Only this workspace may use the Seqera WIF provider."
+  type        = string
+}

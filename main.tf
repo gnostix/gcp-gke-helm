@@ -207,7 +207,9 @@ module "nextflow_batch" {
   network_name = module.network.network_name
   subnet_name  = module.network.subnet_name
 
-  wif_pool_name = null # N3: set to the Seqera WIF pool
+  # Seqera WIF pool from bootstrap/seqera-oidc.tf (pool id "seqera").
+  # Built from the project NUMBER - that's how WIF principals are addressed.
+  wif_pool_name = "projects/${data.google_project.this.number}/locations/global/workloadIdentityPools/seqera"
 
   depends_on = [google_project_service.this]
 }

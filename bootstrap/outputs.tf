@@ -19,3 +19,11 @@ output "chart_registry" {
   description = "OCI base URL for Helm charts: helm push <chart>.tgz <this>"
   value       = "oci://${local.chart_registry}"
 }
+
+output "seqera_wif" {
+  description = "Seqera credential form: 'Workload identity provider' = provider."
+  value = {
+    pool_name = google_iam_workload_identity_pool.seqera.name
+    provider  = google_iam_workload_identity_pool_provider.seqera.name
+  }
+}
