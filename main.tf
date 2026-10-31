@@ -192,3 +192,22 @@ module "cloud_batch" {
 
   depends_on = [google_project_service.this] # batch API before anything else
 }
+
+# -----------------------------------------------------------------------------
+# Nextflow on Cloud Batch, launched from Seqera Platform (identities + buckets).
+# Pipelines themselves live in the nextflow-pipelines repo.
+# -----------------------------------------------------------------------------
+module "nextflow_batch" {
+  source = "./modules/nextflow-batch"
+
+  project_id = var.project_id
+  region     = var.region
+  name       = var.name
+
+  network_name = module.network.network_name
+  subnet_name  = module.network.subnet_name
+
+  wif_pool_name = null # N3: set to the Seqera WIF pool
+
+  depends_on = [google_project_service.this]
+}
