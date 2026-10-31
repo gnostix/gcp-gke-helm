@@ -33,6 +33,12 @@ variable "enable_nat" {
   default     = false
 }
 
+variable "enable_batch_nat" {
+  description = "Cloud NAT for Cloud Batch / Nextflow VMs (no external IP) WITHOUT switching GKE to private nodes. Needed by the Nextflow head job (GitHub, Seqera API, quay.io)."
+  type        = bool
+  default     = true
+}
+
 # --- Step 4: Secret Manager ---------------------------------------------------
 variable "demo_secret" {
   description = "Demo secret value. CI: GitHub secret DEMO_SECRET. Laptop: export TF_VAR_demo_secret=..."

@@ -11,7 +11,10 @@ module "network" {
   region     = var.region
   name       = var.name
   node_tag   = "${var.name}-node"
-  enable_nat = var.enable_nat
+
+  # NAT if GKE is private OR Batch VMs need egress. GKE's private_nodes below
+  # still follows enable_nat only.
+  enable_nat = var.enable_nat || var.enable_batch_nat
 
   # CIDRs use the module defaults (10.10/20 nodes, 10.20/16 pods, 10.30/20 services).
 
