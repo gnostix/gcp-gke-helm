@@ -67,3 +67,7 @@ output "gke_batch" {
 output "cloud_batch" {
   value = module.cloud_batch.job_settings
 }
+
+output "nextflow_batch" {
+  value = module.nextflow_batch.seqera
+}
